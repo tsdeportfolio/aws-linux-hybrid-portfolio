@@ -1,0 +1,15 @@
+--- Pattern 1: Normal (Expected: 0) ---
+[OK] 正常稼働: HTTP 200 かつ 本文に 'portfolio-ok' を確認
+Exit: 0
+--- Pattern 2: Body Mismatch (Expected: 1) ---
+[WARN] 異常検知: HTTP 200 ですが期待文字列 'wrong-body' が本文に含まれません
+Exit: 1
+--- Pattern 3: HTTP 404 (Expected: 1) ---
+[WARN] 異常検知: HTTP ステータスコード 404
+Exit: 1
+--- Pattern 4: Connection Refused (Expected: 2) ---
+[FAIL] 通信失敗: 接続拒否またはタイムアウト (curl終了コード: 7)
+Exit: 2
+--- Pattern 5: Timeout (Expected: 2) ---
+[FAIL] 通信失敗: 接続拒否またはタイムアウト (curl終了コード: 28)
+Exit: 2

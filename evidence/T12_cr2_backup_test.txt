@@ -1,0 +1,19 @@
+2026-10-23T15:53:26+09:00
+portfolio-web
+=== CR-2 Backup & Restore Test Start ===
+--- 1. Normal Backup ---
+[OK] バックアップ正常完了: /home/user/portfolio-lab/backups/nginx/nginx_backup_20261023_155326.tar.gz
+Exit: 0
+--- 2. Invalid Target ---
+[FAIL] 対象ディレクトリが存在しません: /not_exist_dir
+Exit: 2
+--- 3. Permission Denied Target ---
+[FAIL] 保存先ディレクトリを作成できません: /proc/invalid_backup
+Exit: 2
+--- 4. Restore & Diff Check (Expected Exit: 0) ---
+Diff Exit (Original): 0
+--- 5. Modified Diff Check (Expected Exit: 1) ---
+diff -r /etc/nginx/nginx.conf restore/nginx/nginx.conf
+84a85
+> # test modified
+Diff Exit (Modified): 1

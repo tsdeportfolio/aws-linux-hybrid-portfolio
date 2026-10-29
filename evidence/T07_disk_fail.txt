@@ -1,0 +1,2 @@
+df: /not-existing: No such file or directory
+UNKNOWN reason=df_failed

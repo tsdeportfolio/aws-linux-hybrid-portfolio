@@ -1,0 +1,6 @@
+=== Nginx Config Test ===
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+=== Syslog Received Access Log ===
+tail: '/var/log/nginx_syslog.log' を 読み込み用に開くことが出来ません: 許可がありません

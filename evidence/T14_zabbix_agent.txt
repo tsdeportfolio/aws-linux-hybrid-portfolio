@@ -1,0 +1,27 @@
+=== Service Status ===
+● zabbix-agent.service - Zabbix Agent
+     Loaded: loaded (/usr/lib/systemd/system/zabbix-agent.service; enabled; preset: disabled)
+     Active: active (running) since Mon 2026-10-26 16:22:17 JST; 1h 7min ago
+    Process: 9143 ExecStart=/usr/sbin/zabbix_agentd -c $CONFFILE (code=exited, status=0/SUCCESS)
+   Main PID: 9145 (zabbix_agentd)
+      Tasks: 6 (limit: 10292)
+     Memory: 4.9M (peak: 5.4M)
+        CPU: 2.783s
+     CGroup: /system.slice/zabbix-agent.service
+             ├─9145 /usr/sbin/zabbix_agentd -c /etc/zabbix/zabbix_agentd.conf
+             ├─9146 "/usr/sbin/zabbix_agentd: collector [idle 1 sec]"
+             ├─9147 "/usr/sbin/zabbix_agentd: listener #1 [waiting for connection]"
+             ├─9148 "/usr/sbin/zabbix_agentd: listener #2 [waiting for connection]"
+             ├─9149 "/usr/sbin/zabbix_agentd: listener #3 [waiting for connection]"
+             └─9150 "/usr/sbin/zabbix_agentd: active checks #1 [idle 1 sec]"
+
+10月 26 16:22:17 portfolio-web systemd[1]: Starting Zabbix Agent...
+10月 26 16:22:17 portfolio-web systemd[1]: Started Zabbix Agent.
+
+=== Listen Port (10050) ===
+LISTEN 0      4096         0.0.0.0:10050      0.0.0.0:*          
+LISTEN 0      4096            [::]:10050         [::]:*          
+
+=== Metric Collection Test ===
+system.cpu.load[all,avg1]                     [d|0]
+vfs.fs.size[/,free]                           [u|11588866048]

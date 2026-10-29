@@ -1,0 +1,32 @@
+=== [障害再現 & 検知] ===
+$ curl -v http://10.10.1.100/
+* connect to 10.10.1.100 port 80 failed: Connection refused
+curl: (7) Failed to connect to 10.10.1.100 port 80: Connection refused
+
+$ ./scripts/health_check.sh http://10.10.1.100 "Test"
+[FAIL] 通信失敗: 接続拒否またはタイムアウト (curl終了コード: 7)
+$ echo $?
+2
+
+=== [調査・事実収集] ===
+$ ss -tlpn | grep 80
+(出力なし)
+
+$ systemctl status nginx
+○ nginx.service - The nginx HTTP and reverse proxy server
+   Active: inactive (dead) since Tue 2026-10-27 13:54:43 JST
+
+=== [復旧・復旧確認] ===
+$ sudo systemctl start nginx
+$ systemctl status nginx
+● nginx.service - The nginx HTTP and reverse proxy server
+   Active: active (running)
+
+$ ss -tlpn | grep :80
+LISTEN 0      511          0.0.0.0:80        0.0.0.0:*
+LISTEN 0      511             [::]:80           [::]:*
+
+$ ./scripts/health_check.sh http://10.10.1.100 "Test"
+[OK] 正常稼働: HTTP 200 かつ 本文に 'Test' を確認
+$ echo $?
+0

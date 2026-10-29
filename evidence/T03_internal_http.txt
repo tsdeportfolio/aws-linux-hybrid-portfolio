@@ -1,0 +1,13 @@
+2026-10-21T152627+0900
+portfolio-web
+HTTP1.1 200 OK
+Server nginx1.20.1
+Date Wed, 21 Oct 2026 062627 GMT
+Content-Type textplain
+Content-Length 13
+Last-Modified Wed, 21 Oct 2026 054725 GMT
+Connection keep-alive
+ETag 6ad851ed-d
+Accept-Ranges bytes
+
+portfolio-ok

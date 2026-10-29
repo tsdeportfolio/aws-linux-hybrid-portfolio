@@ -1,0 +1,51 @@
+10月 23 15:48:39 portfolio-web systemd[1]: Starting Portfolio local HTTP check...
+10月 23 15:48:39 portfolio-web bash[5317]: [OK] 正常稼働: HTTP 200 かつ 本文に 'portfolio-ok' を確認
+10月 23 15:48:39 portfolio-web systemd[1]: portfolio-health.service: Deactivated successfully.
+10月 23 15:48:39 portfolio-web systemd[1]: Finished Portfolio local HTTP check.
+10月 23 15:50:39 portfolio-web systemd[1]: Starting Portfolio local HTTP check...
+10月 23 15:50:39 portfolio-web bash[5325]: [OK] 正常稼働: HTTP 200 かつ 本文に 'portfolio-ok' を確認
+10月 23 15:50:39 portfolio-web systemd[1]: portfolio-health.service: Deactivated successfully.
+10月 23 15:50:39 portfolio-web systemd[1]: Finished Portfolio local HTTP check.
+10月 23 15:52:03 portfolio-web systemd[1]: Starting Portfolio local HTTP check...
+10月 23 15:52:03 portfolio-web bash[5353]: [OK] 正常稼働: HTTP 200 かつ 本文に 'portfolio-ok' を確認
+10月 23 15:52:03 portfolio-web systemd[1]: portfolio-health.service: Deactivated successfully.
+10月 23 15:52:03 portfolio-web systemd[1]: Finished Portfolio local HTTP check.
+10月 23 15:53:26 portfolio-web systemd[1]: Starting Portfolio local HTTP check...
+10月 23 15:53:26 portfolio-web bash[5367]: [OK] 正常稼働: HTTP 200 かつ 本文に 'portfolio-ok' を確認
+10月 23 15:53:26 portfolio-web systemd[1]: portfolio-health.service: Deactivated successfully.
+10月 23 15:53:26 portfolio-web systemd[1]: Finished Portfolio local HTTP check.
+10月 23 15:54:39 portfolio-web systemd[1]: Starting Portfolio local HTTP check...
+10月 23 15:54:39 portfolio-web bash[5413]: [OK] 正常稼働: HTTP 200 かつ 本文に 'portfolio-ok' を確認
+10月 23 15:54:39 portfolio-web systemd[1]: portfolio-health.service: Deactivated successfully.
+10月 23 15:54:39 portfolio-web systemd[1]: Finished Portfolio local HTTP check.
+10月 23 15:56:39 portfolio-web systemd[1]: Starting Portfolio local HTTP check...
+10月 23 15:56:39 portfolio-web bash[5432]: [OK] 正常稼働: HTTP 200 かつ 本文に 'portfolio-ok' を確認
+10月 23 15:56:39 portfolio-web systemd[1]: portfolio-health.service: Deactivated successfully.
+10月 23 15:56:39 portfolio-web systemd[1]: Finished Portfolio local HTTP check.
+10月 23 15:58:39 portfolio-web systemd[1]: Starting Portfolio local HTTP check...
+10月 23 15:58:39 portfolio-web bash[5450]: [OK] 正常稼働: HTTP 200 かつ 本文に 'portfolio-ok' を確認
+10月 23 15:58:39 portfolio-web systemd[1]: portfolio-health.service: Deactivated successfully.
+10月 23 15:58:39 portfolio-web systemd[1]: Finished Portfolio local HTTP check.
+10月 23 16:00:39 portfolio-web systemd[1]: Starting Portfolio local HTTP check...
+10月 23 16:00:39 portfolio-web bash[5457]: [OK] 正常稼働: HTTP 200 かつ 本文に 'portfolio-ok' を確認
+10月 23 16:00:39 portfolio-web systemd[1]: portfolio-health.service: Deactivated successfully.
+10月 23 16:00:39 portfolio-web systemd[1]: Finished Portfolio local HTTP check.
+10月 23 16:02:09 portfolio-web systemd[1]: Starting Portfolio local HTTP check...
+10月 23 16:02:09 portfolio-web bash[5489]: [OK] 正常稼働: HTTP 200 かつ 本文に 'portfolio-ok' を確認
+10月 23 16:02:09 portfolio-web systemd[1]: portfolio-health.service: Deactivated successfully.
+10月 23 16:02:09 portfolio-web systemd[1]: Finished Portfolio local HTTP check.
+10月 23 16:03:17 portfolio-web systemd[1]: Starting Portfolio local HTTP check...
+10月 23 16:03:17 portfolio-web bash[5513]: [OK] 正常稼働: HTTP 200 かつ 本文に 'portfolio-ok' を確認
+10月 23 16:03:17 portfolio-web systemd[1]: portfolio-health.service: Deactivated successfully.
+10月 23 16:03:17 portfolio-web systemd[1]: Finished Portfolio local HTTP check.
+=== nginx stopped test ===
+10月 23 16:10:39 portfolio-web systemd[1]: Starting Portfolio local HTTP check...
+10月 23 16:10:39 portfolio-web bash[5574]: [FAIL] 通信失敗: 接続拒否またはタイムアウト (curl終了コード: 7)
+10月 23 16:10:39 portfolio-web systemd[1]: portfolio-health.service: Main process exited, code=exited, status=2/INVALIDARGUMENT
+10月 23 16:10:39 portfolio-web systemd[1]: portfolio-health.service: Failed with result 'exit-code'.
+10月 23 16:10:39 portfolio-web systemd[1]: Failed to start Portfolio local HTTP check.
+10月 23 16:11:49 portfolio-web systemd[1]: Starting Portfolio local HTTP check...
+10月 23 16:11:49 portfolio-web bash[5580]: [FAIL] 通信失敗: 接続拒否またはタイムアウト (curl終了コード: 7)
+10月 23 16:11:49 portfolio-web systemd[1]: portfolio-health.service: Main process exited, code=exited, status=2/INVALIDARGUMENT
+10月 23 16:11:49 portfolio-web systemd[1]: portfolio-health.service: Failed with result 'exit-code'.
+10月 23 16:11:49 portfolio-web systemd[1]: Failed to start Portfolio local HTTP check.

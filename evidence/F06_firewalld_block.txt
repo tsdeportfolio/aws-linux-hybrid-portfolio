@@ -1,0 +1,82 @@
+=== 1. 現在のファイアウォール設定（遮断前） ===
+public (active)
+  target: default
+  icmp-block-inversion: no
+  interfaces: ens160
+  sources: 
+  services: cockpit dhcpv6-client
+  ports: 
+  protocols: 
+  forward: yes
+  masquerade: no
+  forward-ports: 
+  source-ports: 
+  icmp-blocks: 
+  rich rules: 
+	rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept
+	rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
+
+=== 2. 障害投入（80番ポートルールの削除） ===
+success
+public (active)
+  target: default
+  icmp-block-inversion: no
+  interfaces: ens160
+  sources: 
+  services: cockpit dhcpv6-client
+  ports: 
+  protocols: 
+  forward: yes
+  masquerade: no
+  forward-ports: 
+  source-ports: 
+  icmp-blocks: 
+  rich rules: 
+	rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept
+	rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
+
+=== 3. サーバ内部からの疎通確認（プロセス自体の生存確認） ===
+HTTP/1.1 200 OK
+Server: nginx/1.20.1
+Date: Wed, 28 Oct 2026 07:58:01 GMT
+Content-Type: text/html
+Content-Length: 5760
+Last-Modified: Mon, 24 Mar 2025 16:15:24 GMT
+Connection: keep-alive
+ETag: "67e1851c-1680"
+Accept-Ranges: bytes
+
+LISTEN 0      511          0.0.0.0:80         0.0.0.0:*          
+LISTEN 0      511             [::]:80            [::]:*          
+
+=== 4. 設定復旧（80番ポートの再許可） ===
+success
+success
+
+=== 5. 復旧確認（ファイアウォール設定＆内部応答） ===
+public (active)
+  target: default
+  icmp-block-inversion: no
+  interfaces: ens160
+  sources: 
+  services: cockpit dhcpv6-client
+  ports: 80/tcp
+  protocols: 
+  forward: yes
+  masquerade: no
+  forward-ports: 
+  source-ports: 
+  icmp-blocks: 
+  rich rules: 
+	rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept
+	rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
+HTTP/1.1 200 OK
+Server: nginx/1.20.1
+Date: Wed, 28 Oct 2026 07:58:02 GMT
+Content-Type: text/html
+Content-Length: 5760
+Last-Modified: Mon, 24 Mar 2025 16:15:24 GMT
+Connection: keep-alive
+ETag: "67e1851c-1680"
+Accept-Ranges: bytes
+

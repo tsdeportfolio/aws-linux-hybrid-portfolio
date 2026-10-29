@@ -1,0 +1,28 @@
+=== [障害再現 & 検知] ===
+$ sudo systemctl reload nginx
+Job for nginx.service failed.
+See "systemctl status nginx.service" and "journalctl -xeu nginx.service" for details.
+
+=== [調査・原因特定] ===
+$ sudo nginx -t
+nginx: [emerg] unexpected end of file, expecting ";" or "}" in /etc/nginx/nginx.conf:87
+nginx: configuration file /etc/nginx/nginx.conf test failed
+
+$ journalctl -u nginx -n 20 --no-pager
+portfolio-web systemd[1]: Reloading The nginx HTTP and reverse proxy server...
+portfolio-web nginx[11903]: nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+portfolio-web nginx[11903]: nginx: [emerg] unexpected end of file, expecting ";" or "}" in /etc/nginx/nginx.conf:87
+portfolio-web systemd[1]: nginx.service: Control process exited, code=exited, status=1/FAILURE
+portfolio-web systemd[1]: Reload failed for The nginx HTTP and reverse proxy server.
+
+=== [復旧・復旧確認] ===
+$ sudo cp /etc/nginx/nginx.conf.bak /etc/nginx/nginx.conf
+$ sudo nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+$ sudo systemctl reload nginx
+$ ./scripts/health_check.sh http://10.10.1.100 "Test"
+[OK] 正常稼働: HTTP 200 かつ 本文に 'Test' を確認
+$ echo $?
+0

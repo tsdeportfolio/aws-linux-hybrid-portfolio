@@ -1,0 +1,12 @@
+[Unit]
+Description=Portfolio local HTTP check
+Wants=network-online.target
+After=network-online.target nginx.service
+
+[Service]
+Type=oneshot
+User=user
+WorkingDirectory=/home/user/portfolio-lab
+ExecStart=/usr/bin/bash /home/user/portfolio-lab/scripts/health_check.sh http://127.0.0.1/portfolio/health.txt portfolio-ok
+StandardOutput=journal
+StandardError=journal

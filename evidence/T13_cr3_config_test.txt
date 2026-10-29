@@ -1,0 +1,15 @@
+=== Test 1: Normal Execution ===
+[UNKNOWN] Missing required parameters in config.
+Exit Code: 2
+
+=== Test 2: Override Threshold (1%) ===
+[UNKNOWN] Missing required parameters in config.
+Exit Code: 2
+
+=== Test 3: Missing Config File ===
+[UNKNOWN] Config file not found: /etc/ops/disk_check.conf
+Exit Code: 2
+
+=== Test 4: Missing Required Parameter ===
+[UNKNOWN] Missing required parameters in config.
+Exit Code: 2

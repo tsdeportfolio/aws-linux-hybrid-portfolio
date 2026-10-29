@@ -1,0 +1,5 @@
+=== 404 Error Log in Syslog ===
+grep: /var/log/nginx_syslog.log: 許可がありません
+
+=== Disk Check Warn Alert Log ===
+[UNKNOWN] Missing required parameters in config.

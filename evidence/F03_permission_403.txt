@@ -1,0 +1,38 @@
+=== [障害再現 & 検知] ===
+$ sudo chmod 600 /usr/share/nginx/html/index.html
+$ curl.exe -I http://10.10.1.100
+HTTP/1.1 403 Forbidden
+Server: nginx/1.20.1
+
+$ ./scripts/health_check.sh http://10.10.1.100 "Test"
+[WARN] 異常検知: HTTP ステータスコード 403
+$ echo $?
+1
+
+=== [調査・原因特定] ===
+$ sudo tail -n 10 /var/log/nginx/error.log
+[error] 12016#12016: *21 open() "/usr/share/nginx/html/index.html" failed (13: Permission denied), client: 10.10.1.100, server: _, request: "GET / HTTP/1.1", host: "10.10.1.100"
+
+$ namei -l /usr/share/nginx//html/index.html
+f: /usr/share/nginx//html/index.html
+dr-xr-xr-x root root /
+drwxr-xr-x root root usr
+drwxr-xr-x root root share
+drwxr-xr-x root root nginx
+drwxr-xr-x root root html
+lrwxrwxrwx root root index.html -> ../../testpage/index.html
+drwxr-xr-x root root ..
+drwxr-xr-x root root ..
+drwxr-xr-x root root testpage
+-rw------- root root index.html
+
+=== [復旧・復旧確認] ===
+$ sudo chmod 644 /usr/share/nginx/html/index.html
+$ namei -l /usr/share/nginx//html/index.html
+...
+-rw-r--r-- root root index.html
+
+$ ./scripts/health_check.sh http://10.10.1.100 "Test"
+[OK] 正常稼働: HTTP 200 かつ 本文に 'Test' を確認
+$ echo $?
+0

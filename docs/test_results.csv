@@ -1,0 +1,28 @@
+﻿番号,確認項目,期待する結果,実際の結果,判定,証跡ファイル
+T01,作業PCからSSH接続できる,ログインでき、hostnameがportfolio-web,接続成功、hostname確認,合格,evidence/T01_ssh_login.png
+T02,時刻同期が有効,chronyd同期、TZがAsia/Tokyo,NTP synchronized: yes確認,合格,evidence/T02_ntp_sync.png
+T03,内部HTTP応答,HTTP 200、本文 portfolio-ok,"200 OK, portfolio-ok",合格,evidence/T03_internal_http.txt
+T04,外部HTTP応答,作業PCのブラウザ/curlから同じ応答,"200 OK, portfolio-ok",合格,evidence/T04_browser_access.png
+T05,再起動後も疎通・自動起動が成立,reboot後もnginx自動起動、応答維持,active、uptime直後、200 OK確認,合格,evidence/T05_reboot_check.txt
+T06,Web監視 正常,health_check.sh の終了コード 0,終了コード 0 を確認,合格,evidence/T06_health_ok.txt
+T07,Web監視 HTTP異常,404 または本文不一致で終了コード 1,404 指定で終了コード 1 を確認,合格,evidence/T06_health_404.txt
+T08,Web監視 接続失敗,接続拒否・タイムアウトで終了コード 2,ポート1番指定で終了コード 2 を確認,合格,evidence/T06_health_connfail.txt
+T09,ディスク監視 正常,disk_check.sh の終了コード 0,閾値80%で終了コード 0 を確認,合格,evidence/T07_diskok.txt
+T10,ディスク監視 閾値警告,終了コード 1,閾値1%で終了コード 1 を確認,合格,evidence/T07_disk_warn.txt
+T11,ディスク監視 取得失敗,対象なし・閾値不正で終了コード 2,存在しないパスで終了コード 2 を確認,合格,evidence/T07_disk_fail.txt
+T12,バックアップと復元,別フォルダーへ復元し diff で一致,nginx設定とhtmlを展開しdiffなし(SAME)を確認,合格,evidence/T08_backup_exec.txt evidence/T09_backup_exec.txt
+T13,Web監視定期実行（timer）,タイマーによりスクリプトが継続実行されWeb停止時に失敗ログが記録されること,"約1〜2分間隔で定期実行され、nginx停止時にstatus=2で失敗ログを記録",合格,evidence/T10_timer_repeat.txt
+T14,CR-1 health_check 改修試験（5パターン）,正常(0)・本文不一致(1)・404(1)・接続拒否(2)・タイムアウト(2) が正しく返ること,5パターンすべて想定通りの終了コード（0/1/1/2/2）を確認,合格,evidence/T11_cr1_test.txt
+T15,CR-2 backup_dir 改修・復元差分照合,保存先引数化・対象不在/書込不可でコード2・復元後diff差分なし・改変検知,全パターン想定通り動作し復元後にdiff -rで完全一致(0)および改変検知(1)を確認,合格,evidence/T12_cr2_backup_test.txt
+T16,"CR-3 disk_check 改修・設定ファイル分離・バリデーション",設定ファイル読み込み(0)・引数上書き(1)・ファイル欠損(2)・パラメータ欠損(2)が正しく返ること,全4パターンで想定通りのコード(0/1/2)を確認,合格,evidence/T13_cr3_config_test.txt
+T17,Zabbix Agent サービス稼働およびメトリクス収集,サービスがactiveかつ10050がLISTENでzabbix_agentd -tにて値が返ること,active (running)確認・10050 LISTEN・CPU/ディスクメトリクス取得成功,合格,evidence/T14_zabbix_agent.txt
+T18,nginx syslogログ転送確認,HTTPアクセス時に/var/log/nginx_syslog.logへリアルタイムにログが出力されること,syslogヘッダー付きで200 OKログが記録されることを確認,合格,evidence/T15_rsyslog_forward.txt
+T19,アラーム閾値・障害検知確認,404アクセスログの記録およびディスク閾値超過時の警告ログが記録されること,syslogに404記録・ops_alert.logにWARNログ出力と終了コード1を確認,合格,evidence/T16_alarm_detect.txt
+F01,障害:nginxサービス停止,Connection refused検知・systemctlでinactive確認後に起動復旧,Connection refused確認・inactive確認・起動後200OKおよびコード0復帰,合格,evidence/F01_nginx_stop.txt
+F02,障害:設定構文エラー,リロード失敗時にnginx -tで行特定・バックアップ復元後リロード成功,87行目構文エラー特定・bak復元・nginx -t成功・リロード後200OK,合格,evidence/F02_nginx_syntax_err.txt
+F03,障害:公開ファイル権限403,403検知・nameiでindex.html権限不足特定・644修正で復旧,HTTP 403検知・nameiで600特定・chmod 644後に200OK復帰,合格,evidence/F03_permission_403.txt
+F04,障害:ディスク容量枯渇,80%超えでWARN検知・findとduで特定・削除後にOK復旧,87%でWARN(コード1)検知・8.5Gファイル特定・削除後37%でコード0復帰,合格,evidence/F04_disk_full.txt
+F05,障害:外部名前解決障害,DNS設定不備時にIP直打ちは成功しドメイン解決のみ失敗・復旧後にHTTP200確認,ping疎通OK・curl解決失敗検知・resolv.conf復元後にHTTP 200確認,合格,evidence/F05_dns_failure.txt
+F06,障害:firewalld遮断,80番遮断時に内部疎通(200)維持かつ外部タイムアウト検知・ルール再投入で復旧,localhostはHTTP200/外部DROP検知・rich-rule復旧後に外部応答回復,合格,evidence/F06_firewalld_block.txt
+F07,障害:timer環境差異,手動実行正常かつsystemd実行時にPATH欠落(127)検知・service修正後に正常稼働,手動コード0・service実行時status=2およびcurl未検出特定・設定復元後active確認,合格,evidence/F07_timer_env_diff.txt
+F08,障害:監視エージェント停止,zabbix-agent停止・無効化を検知しenable --nowにて即時復旧,inactiveおよびdisabled確認・SIGTERM正常停止確認・enable --nowでactive回復,合格,evidence/F08_zabbix_stopped.txt

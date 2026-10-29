@@ -1,0 +1,2 @@
+curl: (7) Failed to connect to 127.0.1 port 1: 接続を拒否されました
+2026-10-22T12:16:00+09:00 UNKNOWN url=http://127.0.1:1/ curl_rc=7

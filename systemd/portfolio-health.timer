@@ -1,0 +1,10 @@
+[Unit]
+Description=Run portfolio HTTP check every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+Unit=portfolio-health.service
+
+[Install]
+WantedBy=timers.target

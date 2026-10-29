@@ -1,0 +1,61 @@
+=== 1. 障害投入（サービス停止および自動起動無効化） ===
+
+=== 2. サービス状態確認（inactive & disabled） ===
+○ zabbix-agent.service - Zabbix Agent
+     Loaded: loaded (/usr/lib/systemd/system/zabbix-agent.service; disabled; preset: disabled)
+     Active: inactive (dead)
+
+10月 26 16:22:17 portfolio-web systemd[1]: Started Zabbix Agent.
+10月 28 16:35:28 portfolio-web systemd[1]: Stopping Zabbix Agent...
+10月 28 16:35:28 portfolio-web systemd[1]: zabbix-agent.service: Deactivated successfully.
+10月 28 16:35:28 portfolio-web systemd[1]: Stopped Zabbix Agent.
+10月 28 16:35:28 portfolio-web systemd[1]: zabbix-agent.service: Consumed 50.172s CPU time, 5.4M memory peak.
+10月 28 16:43:45 portfolio-web systemd[1]: Starting Zabbix Agent...
+10月 28 16:43:45 portfolio-web systemd[1]: Started Zabbix Agent.
+10月 28 16:58:45 portfolio-web systemd[1]: Stopping Zabbix Agent...
+10月 28 16:58:45 portfolio-web systemd[1]: zabbix-agent.service: Deactivated successfully.
+10月 28 16:58:45 portfolio-web systemd[1]: Stopped Zabbix Agent.
+
+=== 3. ポート待受確認（10050不在の確認） ===
+Port 10050 is not listening.
+
+=== 4. エージェントログ確認（SIGTERM正常停止の証拠） ===
+ 16025:20261028:164345.668 **** Enabled features ****
+ 16025:20261028:164345.668 IPv6 support:          YES
+ 16025:20261028:164345.668 TLS support:           YES
+ 16025:20261028:164345.668 **************************
+ 16025:20261028:164345.668 using configuration file: /etc/zabbix/zabbix_agentd.conf
+ 16025:20261028:164345.670 agent #0 started [main process]
+ 16026:20261028:164345.671 agent #1 started [collector]
+ 16027:20261028:164345.671 agent #2 started [listener #1]
+ 16030:20261028:164345.672 agent #5 started [active checks #1]
+ 16029:20261028:164345.677 agent #4 started [listener #3]
+ 16028:20261028:164345.679 agent #3 started [listener #2]
+ 16030:20261028:164345.682 Unable to connect to [127.0.0.1]:10051 [cannot connect to [[127.0.0.1]:10051]: [111] Connection refused]
+ 16030:20261028:164345.682 Active check configuration update started to fail
+ 16025:20261028:165845.793 Got signal [signal:15(SIGTERM),sender_pid:16333,sender_uid:983,reason:0]. Exiting ...
+ 16025:20261028:165845.795 Zabbix Agent stopped. Zabbix 6.0.49 (revision abbb2004ecd).
+
+=== 5. 設定復旧（起動および自動起動有効化） ===
+
+=== 6. 復旧確認（active, enabled, ポート待受） ===
+● zabbix-agent.service - Zabbix Agent
+     Loaded: loaded (/usr/lib/systemd/system/zabbix-agent.service; enabled; preset: disabled)
+     Active: active (running) since Wed 2026-10-28 16:58:46 JST; 54ms ago
+    Process: 16421 ExecStart=/usr/sbin/zabbix_agentd -c $CONFFILE (code=exited, status=0/SUCCESS)
+   Main PID: 16423 (zabbix_agentd)
+      Tasks: 6 (limit: 10292)
+     Memory: 4.1M (peak: 4.6M)
+        CPU: 25ms
+     CGroup: /system.slice/zabbix-agent.service
+             ├─16423 /usr/sbin/zabbix_agentd -c /etc/zabbix/zabbix_agentd.conf
+             ├─16424 "/usr/sbin/zabbix_agentd: collector [idle 1 sec]"
+             ├─16425 "/usr/sbin/zabbix_agentd: listener #1 [waiting for connection]"
+             ├─16426 "/usr/sbin/zabbix_agentd: listener #2 [waiting for connection]"
+             ├─16427 "/usr/sbin/zabbix_agentd: listener #3 [waiting for connection]"
+             └─16428 "/usr/sbin/zabbix_agentd: active checks #1 [idle 1 sec]"
+
+10月 28 16:58:46 portfolio-web systemd[1]: Starting Zabbix Agent...
+10月 28 16:58:46 portfolio-web systemd[1]: Started Zabbix Agent.
+LISTEN 0      4096         0.0.0.0:10050      0.0.0.0:*          
+LISTEN 0      4096            [::]:10050         [::]:*          

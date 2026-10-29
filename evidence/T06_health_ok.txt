@@ -1,0 +1,1 @@
+2026-10-22T12:10:03+09:00 OK url=http://127.0.0.1/portfolio/health.txt http=200

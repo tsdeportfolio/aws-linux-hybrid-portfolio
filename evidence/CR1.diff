@@ -1,0 +1,77 @@
+--- scripts.orig/health_check.sh	2026-10-21 15:25:11.000000000 +0900
++++ scripts/health_check.sh	2026-10-23 13:43:45.186007368 +0900
+@@ -1,25 +1,57 @@
+ #!/usr/bin/env bash
+-# Usage: health_check.sh [URL] [EXPECTED_TEXT]
+-set -u
+-url=${1:-http://127.0.0.1/portfolio/health.txt}
+-expected=${2:-portfolio-ok}
+-now=$(date -Iseconds)
+-body=$(mktemp) || exit 2
+-trap 'rm -f -- "$body"' EXIT
+-code=$(curl --silent --show-error --connect-timeout 3 --max-time 5 \
+-    --output "$body" --write-out '%{http_code}' "$url")
+-rc=$?
+-if (( rc != 0 )); then
+-    printf '%s UNKNOWN url=%s curl_rc=%s\n' "$now" "$url" "$rc" >&2
++# ------------------------------------------------------------------
++# health_check.sh (CR-1 対応版)
++# 用途: 指定URLの疎通および応答本文の妥当性を検証する
++# 終了コード:
++#   0: 正常（HTTP 200 かつ 期待文字列が存在）
++#   1: 異常検知（HTTP 4xx/5xx、または 200 だが期待文字列が不一致）
++#   2: 取得失敗（引数不正、接続タイムアウト、名前解決不可、接続拒否）
++# ------------------------------------------------------------------
++
++URL="$1"
++EXPECTED_BODY="$2"
++
++# 1. 引数チェック（指定がない場合は判定不能として終了コード 2）
++if [ -z "$URL" ] || [ -z "$EXPECTED_BODY" ]; then
++    echo "[ERROR] 使用方法: $0 <URL> <期待する本文文字列>" >&2
+     exit 2
+ fi
+-if [[ "$code" != 200 ]]; then
+-    printf '%s NG url=%s http=%s\n' "$now" "$url" "$code" >&2
++
++# 2. curl 実行（タイムアウト指定 + 本文とステータスコードを同時取得）
++#   --connect-timeout 3: TCPハンドシェイク上限3秒
++#   --max-time 5       : 全体処理上限5秒
++#   -s -S              : 進捗メーター非表示、エラーメッセージは標準エラーへ出力
++TEMP_RESPONSE=$(mktemp)
++HTTP_STATUS=$(curl -s -S \
++    --connect-timeout 3 \
++    --max-time 5 \
++    -o "$TEMP_RESPONSE" \
++    -w "%{http_code}" \
++    "$URL" 2>/dev/null)
++CURL_EXIT=$?
++
++# 3. 一次判定: curl 自体の実行成否（ネットワーク・名前解決・タイムアウト）
++if [ $CURL_EXIT -ne 0 ]; then
++    echo "[FAIL] 通信失敗: 接続拒否またはタイムアウト (curl終了コード: $CURL_EXIT)" >&2
++    rm -f "$TEMP_RESPONSE"
++    exit 2
++fi
++
++# 4. 二次判定: HTTP ステータスコードの確認
++if [ "$HTTP_STATUS" != "200" ]; then
++    echo "[WARN] 異常検知: HTTP ステータスコード $HTTP_STATUS" >&2
++    rm -f "$TEMP_RESPONSE"
+     exit 1
+ fi
+-if ! grep -Fq -- "$expected" "$body"; then
+-    printf '%s NG url=%s reason=unexpected_body\n' "$now" "$url" >&2
++
++# 5. 三次判定: 期待する本文文字列が含まれているか
++if ! grep -q "$EXPECTED_BODY" "$TEMP_RESPONSE"; then
++    echo "[WARN] 異常検知: HTTP 200 ですが期待文字列 '$EXPECTED_BODY' が本文に含まれません" >&2
++    rm -f "$TEMP_RESPONSE"
+     exit 1
+ fi
+-printf '%s OK url=%s http=%s\n' "$now" "$url" "$code"
++
++# 正常終了
++echo "[OK] 正常稼働: HTTP 200 かつ 本文に '$EXPECTED_BODY' を確認"
++rm -f "$TEMP_RESPONSE"
+ exit 0

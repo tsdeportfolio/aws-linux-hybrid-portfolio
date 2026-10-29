@@ -1,0 +1,32 @@
+=== [障害再現 & 検知] ===
+$ sudo fallocate -l 8.5G /tmp/dummy_disk_fill.dat
+$ df -h /
+ファイルシス                   サイズ  使用  残り 使用% マウント位置
+/dev/mapper/almalinux-root    17G   15G  2.3G   87% /
+
+$ ./scripts/disk_check.sh
+2026-10-27T15:49:33+09:00 WARN target=/ used=87% threshold=80%
+$ echo $?
+1
+
+=== [調査・原因特定] ===
+$ sudo find / -xdev -type f -size +1G -exec ls -lh {} + 2>/dev/null
+-rw-r--r--. 1 root root 8.5G 10月 27 15:49 /tmp/dummy_disk_fill.dat
+
+$ sudo du -xhd 1 / | sort -h -r
+15G     /
+8.6G    /tmp
+4.4G    /usr
+1.7G    /var
+...
+
+=== [復旧・復旧確認] ===
+$ sudo rm -f /tmp/dummy_disk_fill.dat
+$ df -h /
+ファイルシス                   サイズ  使用  残り 使用% マウント位置
+/dev/mapper/almalinux-root    17G  6.2G   11G   37% /
+
+$ ./scripts/disk_check.sh
+2026-10-27T15:56:46+09:00 OK target=/ used=37% threshold=80%
+$ echo $?
+0
