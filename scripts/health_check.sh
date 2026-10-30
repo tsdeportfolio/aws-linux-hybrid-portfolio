@@ -45,7 +45,7 @@ if [ "$HTTP_STATUS" != "200" ]; then
 fi
 
 # 5. 三次判定: 期待する本文文字列が含まれているか
-if ! grep -q "$EXPECTED_BODY" "$TEMP_RESPONSE"; then
+if ! grep -qF "$EXPECTED_BODY" "$TEMP_RESPONSE"; then
     echo "[WARN] 異常検知: HTTP 200 ですが期待文字列 '$EXPECTED_BODY' が本文に含まれません" >&2
     rm -f "$TEMP_RESPONSE"
     exit 1

@@ -1,4 +1,5 @@
 === 1. 現在のファイアウォール設定（遮断前） ===
+$ sudo firewall-cmd --list-all
 public (active)
   target: default
   icmp-block-inversion: no
@@ -16,8 +17,13 @@ public (active)
 	rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept
 	rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
 
-=== 2. 障害投入（80番ポートルールの削除） ===
+=== 2. 障害投入（80番ポートルールの削除と反映） ===
+$ sudo firewall-cmd --permanent --zone=public --remove-rich-rule='rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept'
 success
+$ sudo firewall-cmd --reload
+success
+
+$ sudo firewall-cmd --list-all
 public (active)
   target: default
   icmp-block-inversion: no
@@ -32,10 +38,14 @@ public (active)
   source-ports: 
   icmp-blocks: 
   rich rules: 
-	rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept
 	rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
 
-=== 3. サーバ内部からの疎通確認（プロセス自体の生存確認） ===
+=== 3. 外部（作業PC: 10.10.1.1）からのアクセス遮断確認 ===
+$ curl --connect-timeout 3 -I http://10.10.1.100/
+curl: (28) Failed to connect to 10.10.1.100 port 80: Connection timed out
+
+=== 4. サーバ内部（localhost）からの疎通確認（プロセス自体の生存確認） ===
+$ curl -I http://127.0.0.1/
 HTTP/1.1 200 OK
 Server: nginx/1.20.1
 Date: Wed, 28 Oct 2026 07:58:01 GMT
@@ -46,21 +56,25 @@ Connection: keep-alive
 ETag: "67e1851c-1680"
 Accept-Ranges: bytes
 
+$ ss -tlpn | grep :80
 LISTEN 0      511          0.0.0.0:80         0.0.0.0:*          
 LISTEN 0      511             [::]:80            [::]:*          
 
-=== 4. 設定復旧（80番ポートの再許可） ===
+=== 5. 設定復旧（80番ポート rich-rule の再投入） ===
+$ sudo firewall-cmd --permanent --zone=public --add-rich-rule='rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept'
 success
+$ sudo firewall-cmd --reload
 success
 
-=== 5. 復旧確認（ファイアウォール設定＆内部応答） ===
+=== 6. 復旧確認（ファイアウォール設定＆外部アクセス回復） ===
+$ sudo firewall-cmd --list-all
 public (active)
   target: default
   icmp-block-inversion: no
   interfaces: ens160
   sources: 
   services: cockpit dhcpv6-client
-  ports: 80/tcp
+  ports: 
   protocols: 
   forward: yes
   masquerade: no
@@ -70,6 +84,9 @@ public (active)
   rich rules: 
 	rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept
 	rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
+
+# 作業PC（10.10.1.1）からの疎通回復確認
+$ curl -I http://10.10.1.100/
 HTTP/1.1 200 OK
 Server: nginx/1.20.1
 Date: Wed, 28 Oct 2026 07:58:02 GMT
@@ -79,4 +96,3 @@ Last-Modified: Mon, 24 Mar 2025 16:15:24 GMT
 Connection: keep-alive
 ETag: "67e1851c-1680"
 Accept-Ranges: bytes
-

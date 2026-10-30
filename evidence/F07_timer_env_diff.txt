@@ -1,8 +1,13 @@
 === 1. 手動実行（正常稼働確認） ===
+$ /home/user/portfolio-lab/scripts/health_check.sh http://127.0.0.1/portfolio/health.txt portfolio-ok
 [OK] 正常稼働: HTTP 200 かつ 本文に 'portfolio-ok' を確認
 Exit Code: 0
 
 === 2. 障害投入（ダミーPATH設定） ===
+$ sudo sed -i '/Environment=/d' /etc/systemd/system/portfolio-health.service
+$ sudo sed -i '/\[Service\]/a Environment="PATH=/dummy"' /etc/systemd/system/portfolio-health.service
+$ sudo systemctl daemon-reload
+$ sudo systemctl restart portfolio-health.service
 
 === 3. サービス状態（異常系確認） ===
 × portfolio-health.service - Portfolio local HTTP check
@@ -39,6 +44,9 @@ TriggeredBy: ● portfolio-health.timer
 10月 28 16:58:11 portfolio-web systemd[1]: Failed to start Portfolio local HTTP check.
 
 === 5. 設定復旧 ===
+$ sudo sed -i 's|Environment="PATH=/dummy"|Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"|' /etc/systemd/system/portfolio-health.service
+$ sudo systemctl daemon-reload
+$ sudo systemctl restart portfolio-health.service
 
 === 6. 復旧確認 ===
 ○ portfolio-health.service - Portfolio local HTTP check

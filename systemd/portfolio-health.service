@@ -7,6 +7,7 @@ After=network-online.target nginx.service
 Type=oneshot
 User=user
 WorkingDirectory=/home/user/portfolio-lab
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 ExecStart=/usr/bin/bash /home/user/portfolio-lab/scripts/health_check.sh http://127.0.0.1/portfolio/health.txt portfolio-ok
 StandardOutput=journal
 StandardError=journal

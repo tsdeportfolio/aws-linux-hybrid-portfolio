@@ -1,9 +1,26 @@
 # 🚀 Webインフラ構築・運用保守 総合ポートフォリオ
-## 〜 AWSクラウド ＆ オンプレミス（仮想化）ハイブリッド検証・障害対応レポート 〜
+## 〜 AWSクラウド環境の設計構築 ＆ ローカルLinux（AlmaLinux 9）での比較検証・障害対応レポート 〜
 
-本ドキュメントは、AWS（Amazon Web Services）上での設計・構築・運用保守自動化の実績、およびそれらをローカル（オンプレミス）の仮想化環境（VMware Workstation / AlmaLinux 9）上で高精度に再現・比較検証したハイブリッドインフラ構築プロジェクトの全容を1つに統合した成果物レポートです。
+---
 
-単なる「構築手順の記録」にとどまらず、実務のインフラ運用現場で求められる「詳細パラメータ設計」「定期ヘルスチェックの自動化（systemd timer）」「監視基盤（Zabbix / rsyslog）」「既存運用スクリプトの改修・バリデーション強化（CR-1〜CR-3）」「8大障害シナリオに対する論理的一次切り分けと復旧実証（F01〜F08）」までを体系的に網羅しています。
+## 📌 エグゼクティブ・サマリ（1分でわかる全体像）
+
+本ポートフォリオは、**AWSクラウド環境**におけるWebインフラの基本設計・構築と運用自動化、およびそれらを**ローカル仮想化環境（VMware / AlmaLinux 9）**上で忠実に再現・比較検証した自主検証プロジェクトの全容をまとめた成果物です。
+
+「手順通りに構築して終わり」ではなく、**運用現場で即戦力として求められる3つの実務能力**の実証に重きを置いています：
+
+1. **根拠ある詳細パラメータ設計**: 全25項目にわたる設定理由・確認コマンドの策定（[3.1 パラメータシート](docs/parameters.csv)）
+2. **安全な変更管理による運用ツールの改修**: タイムアウト、入力バリデーション、設定分離、diff復元照合を実装（[第4章 CR-1〜CR-3](docs/change_request.md)）
+3. **8大障害シナリオに対する論理的な一次切り分け**: プロセス・ファイル権限・ネットワーク・systemd環境差異に至る階層型トラブルシューティング（[第5章 F01〜F08](evidence/)）
+
+### 📊 プロジェクト概要一覧
+
+| 項目 | 内容 |
+| :--- | :--- |
+| **担当範囲** | 要件整理、パラメータ設計、クラウド環境構築、Linux環境再現、運用スクリプト改修、障害再現・一次切り分け実証、ドキュメント作成（全工程を自主検証として単独実施） |
+| **技術スタック** | **クラウド**: AWS (VPC, Subnet, IGW, RouteTable, EC2, IAM, SecurityGroup, CloudWatch Alarm, SNS)<br>**OS/仮想化**: Amazon Linux 2023, AlmaLinux 9.x, VMware Workstation<br>**ミドルウェア**: Nginx, systemd (Service / Timer), firewalld (rich-rule), chronyd, rsyslog, Zabbix Agent<br>**スクリプト**: Bash (引数バリデーション, 一行パース, エラーハンドリング) |
+| **主要な実績** | ・AWSとLinuxローカル環境でのWeb基盤構築と機能対比<br>・systemd timerによる自律的Web死活監視（約1〜2分間隔）の実装<br>・運用スクリプト3本の堅牢化（CR-1: 本文判定・タイムアウト, CR-2: 保存先引数化・diff照合, CR-3: 設定外部化）<br>・現場頻発障害8パターン（F01〜F08）の論理的切り分け・復旧実証 |
+| **未検証・今後の課題** | ・Zabbix Serverによる集中メトリクス収集・アラート連携（現在はAgent単体導入・ローカル取得まで検証）<br>・AWSとオンプレミスのVPN/DirectConnect閉域網接続（本検証は環境比較・再現を主眼として実施）<br>・ALB + マルチAZによる高可用性（HA）冗長化 |
 
 ---
 
@@ -11,10 +28,10 @@
 
 - [1. 全体概要とプロジェクト目的](#1-全体概要とプロジェクト目的)
   - [1.1 プロジェクト概要](#11-プロジェクト概要)
-  - [1.2 インフラ全体構成図（ハイブリッド構成）](#12-インフラ全体構成図ハイブリッド構成)
-  - [1.3 クラウドとオンプレミスの機能対比表](#13-クラウドとオンプレミスの機能対比表)
+  - [1.2 インフラ全体構成図（比較検証構成）](#12-インフラ全体構成図比較検証構成)
+  - [1.3 クラウドとオンプレミスLinuxの機能対比表](#13-クラウドとオンプレミスlinuxの機能対比表)
   - [1.4 AWSクラウド環境の主要設計値](#14-awsクラウド環境の主要設計値)
-  - [1.5 オンプレミス（仮想化）環境での検証目的](#15-オンプレミス仮想化環境での検証目的)
+  - [1.5 ローカル仮想化（AlmaLinux 9）での検証目的](#15-ローカル仮想化almalinux-9での検証目的)
 - [2. AWSクラウド環境の設計・構築](#2-awsクラウド環境の設計構築)
   - [2.1 ネットワーク環境の新規構築（VPC / Subnet / IGW）](#21-ネットワーク環境の新規構築vpc--subnet--igw)
   - [2.2 Webサーバーの土台構築とセキュリティ設定（EC2 / IAMロール / SG）](#22-webサーバーの土台構築とセキュリティ設定ec2--iamロール--sg)
@@ -55,16 +72,17 @@
 ## 1.1 プロジェクト概要
 本プロジェクトでは、AWS上における仮想ネットワーク環境（VPC）の設計・構築から、EC2インスタンスによるWebサーバー（Nginx）の起動、保守自動化（バックアップスクリプト・cron定時実行）、およびAmazon CloudWatchによるシステム監視設定までを網羅した「AWSクラウドインフラ環境」を構築しました。
 
-さらに、クラウド環境での設計思想をローカル（オンプレミス）の仮想化環境（VMware / AlmaLinux 9）上でシミュレーションし、クラウドとオンプレミスのハイブリッド環境におけるインフラ構築・運用の比較検証を実施しました。
+さらに、クラウド環境での設計思想をローカル（オンプレミス）の仮想化環境（VMware / AlmaLinux 9）上でシミュレーションし、クラウドとオンプレミスLinux環境におけるインフラ構築・運用の比較検証を実施しました。
+※本プロジェクトはAWSとオンプレミスをVPNやDirectConnectで直結したハイブリッド閉域網ではなく、AWS上のネットワーク設計やセキュリティ思想をローカルLinux環境で忠実に再現・対比検証したものです。
 
-特にオンプレミス環境においては、以下の実務運用フェーズの全ライフサイクルを深く追究しています：
+特にオンプレミスLinux環境においては、以下の実務運用フェーズの全ライフサイクルを深く追究しています：
 * 「詳細パラメータ設計」: なぜその設定値にするのかの根拠（設計理由）と確認結果の管理。
 * 「通信・疎通確認」: レイヤーごとの内部・外部からの通信疎通検証。
 * 「運用の自動化・改修」: 単にスクリプトを動かすだけでなく、異常系の例外処理やバリデーション、systemd timerによる定期監視、変更管理手順（Change Request）に則った改修。
 * 「常時監視・ログ集約」: Zabbix Agentによるメトリクス収集とrsyslogによる集中ログ転送。
 * 「障害時の一次切り分け」: 頻発する8つのシステム障害に対する論理的な仮説検証・復旧実証（ランブック化）。
 
-## 1.2 インフラ全体構成図（ハイブリッド構成）
+## 1.2 インフラ全体構成図（比較検証構成）
 
 本プロジェクトで構築・検証したインフラの全体構成図です。AWS上のVPC環境と、VMware上の仮想化環境における設計的・技術的な対応関係を示しています。
 
@@ -84,12 +102,12 @@ flowchart TD
         EC2 -.-> CW
     end
 
-    subgraph On_Premise ["【オンプレミス】VMware 仮想化環境 (VMnet8)"]
+    subgraph On_Premise ["【オンプレミス（仮想化検証）】VMware環境 (VMnet8)"]
         subgraph Local_Subnet ["再現サブネット (10.10.1.0/24)"]
             VM["仮想マシン (portfolio-web)<br>AlmaLinux 9 (固定IP: 10.10.1.100)"]
             Local_Nginx["Nginx (Port 80)<br>公開コンテンツ & health.txt"]
             Firewalld["firewalld (rich-rule)<br>10.10.1.1/32 のみ 22/80 許可"]
-            SystemdTimer["systemd timer (1分毎)<br>portfolio-health.service"]
+            SystemdTimer["systemd timer (約1〜2分間隔)<br>portfolio-health.service"]
             CR_Scripts["運用スクリプト群<br>CR-1: health_check.sh<br>CR-2: backup_dir.sh<br>CR-3: disk_check.sh"]
             ZabbixAgent["Zabbix Agent<br>(Port 10050 LISTEN)"]
             Rsyslog["rsyslog ログ転送<br>(local6ファシリティ集約)"]
@@ -112,7 +130,7 @@ flowchart TD
     User_Access --> HostPC
 ```
 
-## 1.3 クラウドとオンプレミスの機能対比表
+## 1.3 クラウドとオンプレミスLinuxの機能対比表
 
 AWSクラウド上の各インフラ構成要素と、オンプレミス（VMware）環境における技術的対応関係の一覧です。両環境の設計思想と差異を体系的に比較しています。
 
@@ -128,7 +146,7 @@ AWSクラウド上の各インフラ構成要素と、オンプレミス（VMwar
 | Webサーバー | Nginx (HTTP Port 80) | Nginx (HTTP Port 80) | 同一ミドルウェアを用いた設定プロセスの検証およびヘルスチェック配置 |
 | タスク自動実行 | `cron` 定時実行 | `systemd.timer` (`OnUnitActiveSec=1min`) | cronとsystemdタイマーのログ管理性（journald連携）や環境差異の比較 |
 | 運用保守ツール | 日付付き `tar` バックアップスクリプト | 改修版スクリプト群（CR-1〜CR-3） | 引数チェック、書き込み権限検証、外部設定ファイル分離、インジェクション対策 |
-| 死活・リソース監視 | Amazon CloudWatch / SNS | Zabbix Agent (Port 10050) & スクリプト | クラウド統合監視とオンプレミス標準OSS監視エージェントの対比 |
+| 死活・リソース監視 | Amazon CloudWatch / SNS | Zabbix Agent (Port 10050) & スクリプト | クラウド統合監視とOSSエージェントによるメトリクス収集の対比 |
 | ログ管理 | CloudWatch Logs (CWAgent) | `rsyslog` 転送 (local6ファシリティ) | OS標準syslog機構を用いたリアルタイムログ隔離・転送 |
 
 ## 1.4 AWSクラウド環境の主要設計値
@@ -142,10 +160,10 @@ AWSクラウド上の各インフラ構成要素と、オンプレミス（VMwar
 | 保守自動化 | Shell Script (`tar` バックアップ) & `cron` 定時実行 | 人的ミスを防ぐシステムバックアップ自動化 |
 | リソース監視 | Amazon CloudWatch Alarm & Amazon SNS (Email) | CPU過負荷検知および異常時の即時メール通知 |
 
-## 1.5 オンプレミス（仮想化）環境での検証目的
+## 1.5 ローカル仮想化（AlmaLinux 9）での検証目的
 AWS環境の専用OS「Amazon Linux 2023」の再現として、パッケージ構成やベースシステムが極めて近い「AlmaLinux 9」を採用。AWS側のVPC設計（`10.10.1.0/24`）をローカル側で完全にシミュレートし、固定IPアドレスの割り当て、ホストPCからの安全なSSHリモート接続、およびOS内ファイアウォールを制御したWebサーバー（Nginx）の導入までを実証しました。
 
-さらに今回のアップデートにより、単なる構築にとどまらず、パラメータシートに基づく構成管理、systemd timerによる自律運用、OSS監視基盤の構築、運用ツールの設計改修（Change Request）、そして8種類の障害に対する論理的な一次切り分けを実践・記録することで、現場で自走できるインフラエンジニアとしての実務適性を証明しています。
+さらに、**パラメータシートに基づく構成管理、systemd timerによる自律運用、Zabbix Agent等の監視基盤導入、運用ツールの設計改修（Change Request）、そして8種類の障害に対する論理的な一次切り分け**を実践・記録することで、現場で自走できるインフラエンジニアとしての実務適性を証明しています。
 
 ---
 
@@ -203,6 +221,7 @@ SSH接続の送信元IP制限に加え、将来的には管理ポート（22番�
 
 ## 2.3 SSH接続とWebサーバー（Nginx）の導入・疎通確認
 作成したEC2インスタンスへ接続し、Webサーバーパッケージ（Nginx）の導入とWeb公開疎通の検証を行いました。
+※記載のパブリックIP（16.176.141.215）は検証用の一時的なものであり、検証完了に伴いインスタンスはすでに停止・廃棄済みです。
 
 #### ① SSH接続の実行
 ダウンロードした秘密鍵ファイルのアクセスパーミッションを `chmod 400`（所有者のみ読み取り可能）へ厳格に変更し、EC2のパブリックIP経由でSSH接続を確立。
@@ -344,7 +363,7 @@ EC2インスタンスのCPU使用率（`CPUUtilization`）を監視対象とし�
 | Nginx サービス | `enabled`（自動起動） | サーバー再起動や障害復旧時に手動介入なしでサービス復帰 | `systemctl is-enabled nginx` | `enabled`（再起動後もactive維持確認） |
 | ヘルスチェック先 | `/usr/share/nginx/html/portfolio/health.txt` | 監視スクリプトが死活判定を行う固定レスポンスを確保（権限644） | `curl -i http://127.0.0.1/portfolio/health.txt` | `HTTP 200 OK`, 本文 `portfolio-ok` |
 | 定期監視サービス | `portfolio-health.service` | CR-1スクリプトを期待値引数付きで呼び出し自動死活判定 | `systemctl status portfolio-health.service` | `status=0/SUCCESS` |
-| 定期監視タイマー | `portfolio-health.timer` | 1分間隔（`OnUnitActiveSec=1min`）でWebヘルスチェックを自動実行 | `systemctl list-timers --all \| grep portfolio` | `NEXT/LASTが約1分間隔で更新` |
+| 定期監視タイマー | `portfolio-health.timer` | 約1〜2分間隔（前回終了から1分後）でWebヘルスチェックを自動実行 | `systemctl list-timers --all \| grep portfolio` | `NEXT/LASTが約1〜2分間隔で更新` |
 | ディスク監視設定 | `/etc/ops/disk_check.conf` | スクリプトのハードコードを排除し環境差分を吸収（権限600） | `stat -c "%a" /etc/ops/disk_check.conf` | `600`（root所有・改ざん防止） |
 | Zabbix Agent | ポート `10050/TCP` | Zabbix Serverからのポーリング（メトリクス収集）を受け付け | `ss -tlpn \| grep 10050` | `LISTEN 0.0.0.0:10050` |
 | rsyslog転送 | `/etc/rsyslog.d/50-nginx-forward.conf` | Webアクセスログをsyslog基盤へ集約・隔離転送 | `nginx -T \| grep syslog` | `facility=local6,tag=nginx` |
@@ -368,7 +387,7 @@ sudo chmod 644 /usr/share/nginx/html/portfolio/health.txt
 ```
 
 ### ② firewalld の rich-rule によるゼロトラスト的アクセス制限
-AWS環境のセキュリティグループ（送信元IP制限）の設計思想をOS内部で再現するため、`firewalld` のデフォルトゾーン（public）に対し、作業端末（`10.10.1.1/32`）からのアクセスのみを許可する rich-rule（リッチルール） を投入しました。
+AWS環境のセキュリティグループ（送信元IP制限）の設計思想をOS内部で再現するため、`firewalld` のデフォルトゾーン（public）に対し、作業端末（`10.10.1.1/32`）からのアクセスのみを許可する rich-rule（リッチルール）を投入しました。
 
 ```bash
 # 作業端末 (10.10.1.1) からの SSH (22) および HTTP (80) のみ許可
@@ -394,6 +413,7 @@ After=network-online.target nginx.service
 Type=oneshot
 User=user
 WorkingDirectory=/home/user/portfolio-lab
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 ExecStart=/usr/bin/bash /home/user/portfolio-lab/scripts/health_check.sh http://127.0.0.1/portfolio/health.txt portfolio-ok
 StandardOutput=journal
 StandardError=journal
@@ -412,14 +432,15 @@ Unit=portfolio-health.service
 [Install]
 WantedBy=timers.target
 ```
-このタイマーを有効化することで、システム起動2分後から1分間隔で定期ヘルスチェックが自動実行され、Web停止時にはsystemd journalへ即座に異常ステータス（後述のF07障害等）が記録されます。
+このタイマーを有効化することで、システム起動2分後から約1〜2分間隔（前回終了から1分後）で定期ヘルスチェックが自動実行され、Web停止時にはsystemd journalへ即座に異常ステータス（後述のF07障害等）が記録されます。
 
 ---
 
 ## 3.4 監視エージェントおよびログ集約基盤（Zabbix Agent / rsyslog）
 
 ### ① Zabbix Agent によるシステムメトリクス監視
-エンタープライズ環境で標準的に採用される統合監視ソフトウェア「Zabbix」の監視エージェント（Zabbix Agent）を導入しました。
+エンタープライズ環境で標準的に採用される統合監視ソフトウェア「Zabbix」の監視エージェント（Zabbix Agent）を導入し、メトリクス収集環境を検証しました。
+※本検証ではエージェントプロセスの待受およびローカルでのメトリクス取得までを実証しており、Zabbix Serverによる統合監視・アラーム通知は今後の拡張課題としています。
 - 待受ポート: `10050/TCP` が `0.0.0.0` で LISTEN していることを確認。
 - 監視許可元: `/etc/zabbix/zabbix_agentd.conf` にて `Server=127.0.0.1` を設定し、不審なホストからのメトリクス窃取を防御。
 - 動作検証: `zabbix_agentd -t system.cpu.util` および `vfs.fs.size[/,pused]` により、CPU使用率やディスク使用率のメトリクスが即座に取得できることを実証（[evidence/T14_zabbix_agent.txt](evidence/T14_zabbix_agent.txt)）。
@@ -449,7 +470,7 @@ WantedBy=timers.target
 | T10 | ディスク監視 警告 | 閾値超過時に終了コード 1 | 閾値1%指定で終了コード 1 を確認 | 合格 | [evidence/T07_disk_warn.txt](evidence/T07_disk_warn.txt) |
 | T11 | ディスク監視 失敗 | 対象不在・閾値不正で終了コード 2 | 存在しないパス指定でコード 2 確認 | 合格 | [evidence/T07_disk_fail.txt](evidence/T07_disk_fail.txt) |
 | T12 | バックアップと復元 | 別フォルダへ復元し diff で一致 | 設定とhtmlを展開しdiffなし(SAME) | 合格 | [evidence/T08_backup_exec.txt](evidence/T08_backup_exec.txt) |
-| T13 | Web監視 定期実行 | タイマーにより定期実行＆停止ログ記録 | 1分毎実行、停止時status=2記録 | 合格 | [evidence/T10_timer_repeat.txt](evidence/T10_timer_repeat.txt) |
+| T13 | Web監視 定期実行 | タイマーにより定期実行＆停止ログ記録 | 約1〜2分間隔実行、停止時status=2記録 | 合格 | [evidence/T10_timer_repeat.txt](evidence/T10_timer_repeat.txt) |
 | T14 | CR-1 改修試験 | 5パターン(0/1/1/2/2)が正しく返る | 全5パターン想定通りのコード確認 | 合格 | [evidence/T11_cr1_test.txt](evidence/T11_cr1_test.txt) |
 | T15 | CR-2 改修試験 | 保存先引数化・事前検証・diff照合 | diff完全一致(0)・改変検知(1)確認 | 合格 | [evidence/T12_cr2_backup_test.txt](evidence/T12_cr2_backup_test.txt) |
 | T16 | CR-3 改修試験 | 設定分離・引数上書き・入力チェック | 全4パターン想定通り動作確認 | 合格 | [evidence/T13_cr3_config_test.txt](evidence/T13_cr3_config_test.txt) |
@@ -472,7 +493,7 @@ WantedBy=timers.target
 * 対象ファイル: [scripts/health_check.sh](scripts/health_check.sh)（差分: [evidence/CR1.diff](evidence/CR1.diff)）
 * 課題と変更理由:
   - 【課題】タイムアウト未指定のため、サーバーハング時にプロセスが無限に滞留し、systemd timer の次回実行をブロックするリスクがあった。また、HTTP 200 が返ればWebサーバーのエラー画面（メンテナンス画面等）でも正常判定されていた。
-  - 【解決】`--connect-timeout 3`（接続3秒）および `--max-time 5`（全体5秒）を追加。さらにレスポンス本文に期待する文字列（`portfolio-ok`）が含まれているかを `grep` 検証するロジックを実装。
+  - 【解決】`--connect-timeout 3`（接続3秒）および `--max-time 5`（全体5秒）を追加。さらにレスポンス本文に期待する文字列（`portfolio-ok`）が含まれているかを `grep -qF`（固定文字列完全一致）で検証するロジックを実装。
   - 【終了コードの厳密化】
     - `0`: 正常（HTTP 200 かつ 本文一致）
     - `1`: 異常検知（HTTP 4xx/5xx、または本文不一致）
@@ -500,6 +521,11 @@ WantedBy=timers.target
 +fi
 +# 4. 二次判定: HTTP ステータスコードの確認 (200以外は終了コード1)
 +# 5. 三次判定: 期待文字列の包含確認 (不一致時は終了コード1)
++if ! grep -qF "$EXPECTED_BODY" "$TEMP_RESPONSE"; then
++    echo "[WARN] 異常検知: HTTP 200 ですが期待文字列 '$EXPECTED_BODY' が本文に含まれません" >&2
++    rm -f "$TEMP_RESPONSE"
++    exit 1
++fi
 ```
 
 * 検証結果（5パターン完全検証）（[evidence/T11_cr1_test.txt](evidence/T11_cr1_test.txt)）:
@@ -552,7 +578,7 @@ WantedBy=timers.target
 * 設定ファイル: [config/disk.conf](config/disk.conf)（配置先: `/etc/ops/disk_check.conf`, パーミッション 600）
 * 課題と変更理由:
   - 【課題】監視対象マウントポイントや警告閾値がスクリプト内にハードコードされており、環境ごとの閾値変更のたびにスクリプト本体を修正する運用リスクがあった。また、`source` や `.` による外部ファイル読み込みは悪意あるコードの任意実行（コマンドインジェクション）につながる危険があった。
-  - 【解決】設定ファイル `/etc/ops/disk_check.conf` へ外部化し、パーミッションを `600`（root所有）に制限。設定値の読み込みは `while read` でキーと値を1行ずつ安全に解析し、数値バリデーション（`1〜100` の整数値チェック）を実施。さらに、スクリプト実行時引数で設定値の一時上書きを可能とした。
+  - 【解決】設定ファイル `/etc/ops/disk_check.conf` へ外部化（`TARGET_MOUNT=/`, `WARN_THRESHOLD=80`, `CRIT_THRESHOLD=90`）し、パーミッションを `600`（root所有）に制限。設定値の読み込みは `while IFS='=' read -r key value` でキーと値を1行ずつ安全に解析し、数値バリデーション（正の整数値チェック）を実施。さらに、スクリプト実行時引数で設定値の一時上書きを可能とした。
 
 ```diff
 --- scripts.orig/disk_check.sh
@@ -603,7 +629,7 @@ graph TD
     L2 -- "リソース正常 (200 OK等)" --> L3{"【レイヤー3: ネットワーク・境界層】<br>通信経路・名前解決は正常か？"}
     
     L3 -- "外部ドメイン解決不可" --> F05["【F05】DNS名前解決障害<br>ping IP疎通 vs dig 失敗確認<br>→ /etc/resolv.conf 復旧"]
-    L3 -- "外部アクセスのみ遮断" --> F06["【F06】firewalld遮断障害<br>localhost 200 OK vs 外部DROP確認<br>→ rich-rule 再投入復旧"]
+    L3 -- "外部アクセスのみ遮断" --> F06["【F06】firewalld遮断障害<br>localhost 200 OK vs 外部タイムアウト確認<br>→ rich-rule 再投入復旧"]
     
     L3 -- "基盤正常" --> L4{"【レイヤー4: 運用基盤・監視層】<br>自動化・監視エージェントは正常か？"}
     
@@ -689,19 +715,19 @@ graph TD
 
 ## 5.7 【F06】firewalldによる外部通信遮断（localhost疎通 vs 外部タイムアウト）
 * 事象・検知:
-  - 作業PCのブラウザからアクセスすると接続タイムアウト（`ERR_CONNECTION_TIMED_OUT`）が発生（[evidence/F06_firewalld_block.txt](evidence/F06_firewalld_block.txt)）。
+  - 作業PC（10.10.1.1）のブラウザからアクセスすると接続タイムアウト（`ERR_CONNECTION_TIMED_OUT`）が発生（[evidence/F06_firewalld_block.txt](evidence/F06_firewalld_block.txt)）。
 * 調査・事実収集（仮説検証）:
   - サーバー内部にログインしローカル疎通を確認：`curl -I http://127.0.0.1/` → `HTTP 200 OK` が正常に応答。
   - 「NginxプロセスおよびOS内部のWeb機能は健全であり、外部とサーバー間の境界ネットワークに問題がある」と特定。
   - `sudo firewall-cmd --list-all` を実行 → `rich rules` から HTTP（80番ポート）の許可ルールが消失している事実を発見。
-* 原因: ファイアウォール設定の欠落による外部HTTPパケットのDROP。
+* 原因: ファイアウォール設定の欠落（rich-rule削除後のreload反映）による外部HTTPパケットのDROP。
 * 復旧手順と確認:
-  - 作業PC許可ルールを再投入：
+  - 作業PC許可ルールを再投入（全体開放ではなく特定IPのみ許可）：
     ```bash
     sudo firewall-cmd --permanent --zone=public --add-rich-rule='rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept'
     sudo firewall-cmd --reload
     ```
-  - 作業PCブラウザから再読み込みを行い、即座に200 OKでページが表示されることを確認。
+  - 作業PCブラウザおよび `curl -I http://10.10.1.100/` からアクセスを行い、即座に200 OKで疎通が回復することを確認。
 
 ---
 

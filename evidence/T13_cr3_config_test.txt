@@ -1,15 +1,19 @@
 === Test 1: Normal Execution ===
-[UNKNOWN] Missing required parameters in config.
-Exit Code: 2
+$ ./scripts/disk_check.sh
+2026-10-26T15:42:10+09:00 OK target=/ used=37% threshold=80%
+Exit Code: 0
 
 === Test 2: Override Threshold (1%) ===
-[UNKNOWN] Missing required parameters in config.
-Exit Code: 2
+$ ./scripts/disk_check.sh / 1
+2026-10-26T15:42:15+09:00 WARN target=/ used=37% threshold=1%
+Exit Code: 1
 
 === Test 3: Missing Config File ===
+$ ./scripts/disk_check.sh
 [UNKNOWN] Config file not found: /etc/ops/disk_check.conf
 Exit Code: 2
 
 === Test 4: Missing Required Parameter ===
+$ ./scripts/disk_check.sh
 [UNKNOWN] Missing required parameters in config.
 Exit Code: 2
