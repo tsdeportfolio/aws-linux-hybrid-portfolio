@@ -327,7 +327,7 @@ EC2インスタンスのCPU使用率（`CPUUtilization`）を監視対象とし�
 # 3. オンプレミス（VMware / AlmaLinux 9）環境の設計・構築・動作検証
 
 ## 3.1 ネットワークおよび詳細パラメータ設計
-実務のシステム構築では「なんとなく設定する」のではなく、「なぜその値にするのか（設計理由）」を明確にし、設定後に想定通りの状態になっているかをコマンドで客観的に確認することが不可欠です。本プロジェクトでは、以下の詳細パラメータシート（[docs/parameters.csv](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/docs/parameters.csv)）を策定して構築を実施しました。
+実務のシステム構築では「なんとなく設定する」のではなく、「なぜその値にするのか（設計理由）」を明確にし、設定後に想定通りの状態になっているかをコマンドで客観的に確認することが不可欠です。本プロジェクトでは、以下の詳細パラメータシート（[docs/parameters.csv](docs/parameters.csv)）を策定して構築を実施しました。
 
 | 設定項目 | 設定値 | 設定理由（設計思想） | 確認コマンド | 確認結果 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -383,7 +383,7 @@ sudo firewall-cmd --reload
 ## 3.3 運用保守・定期自動監視基盤（systemd service / timer）
 AWSではcronとCloudWatchを使用しましたが、オンプレミス（Linux標準）の実務構成として、より堅牢でjournaldとの統合ログ管理が可能な systemd service & timer による自律監視基盤を構築しました。
 
-* サービス定義ファイル（[systemd/portfolio-health.service](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/systemd/portfolio-health.service)）:
+* サービス定義ファイル（[systemd/portfolio-health.service](systemd/portfolio-health.service)）:
 ```ini
 [Unit]
 Description=Portfolio local HTTP check
@@ -399,7 +399,7 @@ StandardOutput=journal
 StandardError=journal
 ```
 
-* タイマー定義ファイル（[systemd/portfolio-health.timer](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/systemd/portfolio-health.timer)）:
+* タイマー定義ファイル（[systemd/portfolio-health.timer](systemd/portfolio-health.timer)）:
 ```ini
 [Unit]
 Description=Run portfolio HTTP check every minute
@@ -422,40 +422,40 @@ WantedBy=timers.target
 エンタープライズ環境で標準的に採用される統合監視ソフトウェア「Zabbix」の監視エージェント（Zabbix Agent）を導入しました。
 - 待受ポート: `10050/TCP` が `0.0.0.0` で LISTEN していることを確認。
 - 監視許可元: `/etc/zabbix/zabbix_agentd.conf` にて `Server=127.0.0.1` を設定し、不審なホストからのメトリクス窃取を防御。
-- 動作検証: `zabbix_agentd -t system.cpu.util` および `vfs.fs.size[/,pused]` により、CPU使用率やディスク使用率のメトリクスが即座に取得できることを実証（[evidence/T14_zabbix_agent.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T14_zabbix_agent.txt)）。
+- 動作検証: `zabbix_agentd -t system.cpu.util` および `vfs.fs.size[/,pused]` により、CPU使用率やディスク使用率のメトリクスが即座に取得できることを実証（[evidence/T14_zabbix_agent.txt](evidence/T14_zabbix_agent.txt)）。
 
 ### ② Nginx アクセスログの rsyslog リアルタイム転送
 障害発生時のログ改ざん防止や集中管理を想定し、Nginxのアクセスログを標準のファイル出力に加え、OSのsyslog機構（`local6` ファシリティ）へリアルタイム転送する設定を導入しました。
 - 設定ファイル: `/etc/rsyslog.d/50-nginx-forward.conf`
 - 転送先: `/var/log/nginx_syslog.log`
-- 動作検証: 作業PCからのWebアクセスに伴い、リアルタイムにsyslogヘッダー付きログが記録されることを確認（[evidence/T15_rsyslog_forward.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T15_rsyslog_forward.txt)）。
+- 動作検証: 作業PCからのWebアクセスに伴い、リアルタイムにsyslogヘッダー付きログが記録されることを確認（[evidence/T15_rsyslog_forward.txt](evidence/T15_rsyslog_forward.txt)）。
 
 ---
 
 ## 3.5 基本・統合動作試験結果（T01〜T19）
-構築したオンプレミス環境の健全性を客観的に証明するため、全19項目のテストケースを策定し、正常系・異常系・統合動作の検証を実施しました。すべての試験で「合格（想定通りの結果）」を記録しています（[docs/test_results.csv](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/docs/test_results.csv)）。
+構築したオンプレミス環境の健全性を客観的に証明するため、全19項目のテストケースを策定し、正常系・異常系・統合動作の検証を実施しました。すべての試験で「合格（想定通りの結果）」を記録しています（[docs/test_results.csv](docs/test_results.csv)）。
 
 | No | 確認項目 | 期待する結果 | 実際の結果 | 判定 | 証跡エビデンス |
 | :---: | :--- | :--- | :--- | :---: | :--- |
-| T01 | 作業PCからSSH接続できる | ログインできホスト名がportfolio-web | 接続成功、ホスト名確認 | 合格 | [evidence/T01_ssh_login.png](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T01_ssh_login.png) |
-| T02 | 時刻同期が有効 | chronyd同期、TZがAsia/Tokyo | NTP synchronized: yes 確認 | 合格 | [evidence/T02_ntp_sync.png](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T02_ntp_sync.png) |
-| T03 | 内部HTTP応答 | HTTP 200、本文 `portfolio-ok` | `200 OK, portfolio-ok` | 合格 | [evidence/T03_internal_http.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T03_internal_http.txt) |
-| T04 | 外部HTTP応答 | 作業PCブラウザ/curlから同一応答 | `200 OK, portfolio-ok` | 合格 | [evidence/T04_browser_access.png](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T04_browser_access.png) |
-| T05 | 再起動後の自動起動 | reboot後もNginx自動起動、応答維持 | active、uptime直後、200 OK | 合格 | [evidence/T05_reboot_check.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T05_reboot_check.txt) |
-| T06 | Web監視 正常系 | `health_check.sh` の終了コード 0 | 終了コード 0 を確認 | 合格 | [evidence/T06_health_ok.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T06_health_ok.txt) |
-| T07 | Web監視 HTTP異常 | 404または本文不一致で終了コード 1 | 404指定で終了コード 1 を確認 | 合格 | [evidence/T06_health_404.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T06_health_404.txt) |
-| T08 | Web監視 接続失敗 | 接続拒否・タイムアウトで終了コード 2 | 未使用ポート指定でコード 2 確認 | 合格 | [evidence/T06_health_connfail.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T06_health_connfail.txt) |
-| T09 | ディスク監視 正常 | `disk_check.sh` の終了コード 0 | 閾値80%で終了コード 0 を確認 | 合格 | [evidence/T07_diskok.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T07_diskok.txt) |
-| T10 | ディスク監視 警告 | 閾値超過時に終了コード 1 | 閾値1%指定で終了コード 1 を確認 | 合格 | [evidence/T07_disk_warn.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T07_disk_warn.txt) |
-| T11 | ディスク監視 失敗 | 対象不在・閾値不正で終了コード 2 | 存在しないパス指定でコード 2 確認 | 合格 | [evidence/T07_disk_fail.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T07_disk_fail.txt) |
-| T12 | バックアップと復元 | 別フォルダへ復元し diff で一致 | 設定とhtmlを展開しdiffなし(SAME) | 合格 | [evidence/T08_backup_exec.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T08_backup_exec.txt) |
-| T13 | Web監視 定期実行 | タイマーにより定期実行＆停止ログ記録 | 1分毎実行、停止時status=2記録 | 合格 | [evidence/T10_timer_repeat.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T10_timer_repeat.txt) |
-| T14 | CR-1 改修試験 | 5パターン(0/1/1/2/2)が正しく返る | 全5パターン想定通りのコード確認 | 合格 | [evidence/T11_cr1_test.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T11_cr1_test.txt) |
-| T15 | CR-2 改修試験 | 保存先引数化・事前検証・diff照合 | diff完全一致(0)・改変検知(1)確認 | 合格 | [evidence/T12_cr2_backup_test.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T12_cr2_backup_test.txt) |
-| T16 | CR-3 改修試験 | 設定分離・引数上書き・入力チェック | 全4パターン想定通り動作確認 | 合格 | [evidence/T13_cr3_config_test.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T13_cr3_config_test.txt) |
-| T17 | Zabbix Agent 稼働 | サービスactive、メトリクス取得成功 | 10050 LISTEN、CPU/disk取得 | 合格 | [evidence/T14_zabbix_agent.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T14_zabbix_agent.txt) |
-| T18 | syslog ログ転送 | HTTPアクセス時にsyslog出力 | syslogヘッダー付き200ログ記録 | 合格 | [evidence/T15_rsyslog_forward.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T15_rsyslog_forward.txt) |
-| T19 | アラーム検知確認 | 404ログ記録・ディスク超過ログ出力 | syslog404・ops_alert.log WARN記録 | 合格 | [evidence/T16_alarm_detect.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T16_alarm_detect.txt) |
+| T01 | 作業PCからSSH接続できる | ログインできホスト名がportfolio-web | 接続成功、ホスト名確認 | 合格 | [evidence/T01_ssh_login.png](evidence/T01_ssh_login.png) |
+| T02 | 時刻同期が有効 | chronyd同期、TZがAsia/Tokyo | NTP synchronized: yes 確認 | 合格 | [evidence/T02_ntp_sync.png](evidence/T02_ntp_sync.png) |
+| T03 | 内部HTTP応答 | HTTP 200、本文 `portfolio-ok` | `200 OK, portfolio-ok` | 合格 | [evidence/T03_internal_http.txt](evidence/T03_internal_http.txt) |
+| T04 | 外部HTTP応答 | 作業PCブラウザ/curlから同一応答 | `200 OK, portfolio-ok` | 合格 | [evidence/T04_browser_access.png](evidence/T04_browser_access.png) |
+| T05 | 再起動後の自動起動 | reboot後もNginx自動起動、応答維持 | active、uptime直後、200 OK | 合格 | [evidence/T05_reboot_check.txt](evidence/T05_reboot_check.txt) |
+| T06 | Web監視 正常系 | `health_check.sh` の終了コード 0 | 終了コード 0 を確認 | 合格 | [evidence/T06_health_ok.txt](evidence/T06_health_ok.txt) |
+| T07 | Web監視 HTTP異常 | 404または本文不一致で終了コード 1 | 404指定で終了コード 1 を確認 | 合格 | [evidence/T06_health_404.txt](evidence/T06_health_404.txt) |
+| T08 | Web監視 接続失敗 | 接続拒否・タイムアウトで終了コード 2 | 未使用ポート指定でコード 2 確認 | 合格 | [evidence/T06_health_connfail.txt](evidence/T06_health_connfail.txt) |
+| T09 | ディスク監視 正常 | `disk_check.sh` の終了コード 0 | 閾値80%で終了コード 0 を確認 | 合格 | [evidence/T07_diskok.txt](evidence/T07_diskok.txt) |
+| T10 | ディスク監視 警告 | 閾値超過時に終了コード 1 | 閾値1%指定で終了コード 1 を確認 | 合格 | [evidence/T07_disk_warn.txt](evidence/T07_disk_warn.txt) |
+| T11 | ディスク監視 失敗 | 対象不在・閾値不正で終了コード 2 | 存在しないパス指定でコード 2 確認 | 合格 | [evidence/T07_disk_fail.txt](evidence/T07_disk_fail.txt) |
+| T12 | バックアップと復元 | 別フォルダへ復元し diff で一致 | 設定とhtmlを展開しdiffなし(SAME) | 合格 | [evidence/T08_backup_exec.txt](evidence/T08_backup_exec.txt) |
+| T13 | Web監視 定期実行 | タイマーにより定期実行＆停止ログ記録 | 1分毎実行、停止時status=2記録 | 合格 | [evidence/T10_timer_repeat.txt](evidence/T10_timer_repeat.txt) |
+| T14 | CR-1 改修試験 | 5パターン(0/1/1/2/2)が正しく返る | 全5パターン想定通りのコード確認 | 合格 | [evidence/T11_cr1_test.txt](evidence/T11_cr1_test.txt) |
+| T15 | CR-2 改修試験 | 保存先引数化・事前検証・diff照合 | diff完全一致(0)・改変検知(1)確認 | 合格 | [evidence/T12_cr2_backup_test.txt](evidence/T12_cr2_backup_test.txt) |
+| T16 | CR-3 改修試験 | 設定分離・引数上書き・入力チェック | 全4パターン想定通り動作確認 | 合格 | [evidence/T13_cr3_config_test.txt](evidence/T13_cr3_config_test.txt) |
+| T17 | Zabbix Agent 稼働 | サービスactive、メトリクス取得成功 | 10050 LISTEN、CPU/disk取得 | 合格 | [evidence/T14_zabbix_agent.txt](evidence/T14_zabbix_agent.txt) |
+| T18 | syslog ログ転送 | HTTPアクセス時にsyslog出力 | syslogヘッダー付き200ログ記録 | 合格 | [evidence/T15_rsyslog_forward.txt](evidence/T15_rsyslog_forward.txt) |
+| T19 | アラーム検知確認 | 404ログ記録・ディスク超過ログ出力 | syslog404・ops_alert.log WARN記録 | 合格 | [evidence/T16_alarm_detect.txt](evidence/T16_alarm_detect.txt) |
 
 ---
 
@@ -463,13 +463,13 @@ WantedBy=timers.target
 
 ## 4.1 変更管理（CR）の運用方針
 実務の運用保守現場では、運用中のスクリプトや設定変更を行う際、「変更要求」「変更前の課題」「影響範囲」「正常系/異常系の検証」「切り戻し（Rollback）手順」を台帳化して安全に適用する変更管理プロセスが求められます。
-本プロジェクトでは、[docs/change_request.md](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/docs/change_request.md) に基づき、3つの運用ツールの改修（CR-1 〜 CR-3）を実施・検証しました。
+本プロジェクトでは、[docs/change_request.md](docs/change_request.md) に基づき、3つの運用ツールの改修（CR-1 〜 CR-3）を実施・検証しました。
 
 ---
 
 ## 4.2 CR-1: health_check.sh（タイムアウト・応答本文検証・終了コード厳密化）
 
-* 対象ファイル: [scripts/health_check.sh](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/scripts/health_check.sh)（差分: [evidence/CR1.diff](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/CR1.diff)）
+* 対象ファイル: [scripts/health_check.sh](scripts/health_check.sh)（差分: [evidence/CR1.diff](evidence/CR1.diff)）
 * 課題と変更理由:
   - 【課題】タイムアウト未指定のため、サーバーハング時にプロセスが無限に滞留し、systemd timer の次回実行をブロックするリスクがあった。また、HTTP 200 が返ればWebサーバーのエラー画面（メンテナンス画面等）でも正常判定されていた。
   - 【解決】`--connect-timeout 3`（接続3秒）および `--max-time 5`（全体5秒）を追加。さらにレスポンス本文に期待する文字列（`portfolio-ok`）が含まれているかを `grep` 検証するロジックを実装。
@@ -502,7 +502,7 @@ WantedBy=timers.target
 +# 5. 三次判定: 期待文字列の包含確認 (不一致時は終了コード1)
 ```
 
-* 検証結果（5パターン完全検証）（[evidence/T11_cr1_test.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T11_cr1_test.txt)）:
+* 検証結果（5パターン完全検証）（[evidence/T11_cr1_test.txt](evidence/T11_cr1_test.txt)）:
   1. 正常アクセス（200 + 一致）: `Exit Code 0`
   2. 本文不一致（200 + 文字列違い）: `Exit Code 1`
   3. HTTP 404 Not Found: `Exit Code 1`
@@ -514,7 +514,7 @@ WantedBy=timers.target
 
 ## 4.3 CR-2: backup_dir.sh（引数化・事前バリデーション・復元後diff差分照合）
 
-* 対象ファイル: [scripts/backup_dir.sh](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/scripts/backup_dir.sh)（差分: [evidence/CR2.diff](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/CR2.diff)）
+* 対象ファイル: [scripts/backup_dir.sh](scripts/backup_dir.sh)（差分: [evidence/CR2.diff](evidence/CR2.diff)）
 * 課題と変更理由:
   - 【課題】バックアップ保存先が固定されており、保存先ディレクトリの書き込み権限不足や対象不在時に無理に処理が進んで空の破損アーカイブが作られる危険性があった。
   - 【解決】第1引数に対象ディレクトリ、第2引数に保存先ディレクトリを指定可能に変更。アーカイブ作成前に「対象の存在確認」および「保存先へのテスト書き込み権限確認」を行う事前バリデーションを追加。また、絶対パスではなく相対パスでtar圧縮を行い展開時の予期せぬ上書き事故を防止。
@@ -537,7 +537,7 @@ WantedBy=timers.target
 +tar -czf "$DEST_FILE" -C "$(dirname "$TARGET_DIR")" "$TARGET_BASE" 2>/dev/null
 ```
 
-* 検証結果（復元差分照合と異常系検知）（[evidence/T12_cr2_backup_test.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T12_cr2_backup_test.txt)）:
+* 検証結果（復元差分照合と異常系検知）（[evidence/T12_cr2_backup_test.txt](evidence/T12_cr2_backup_test.txt)）:
   1. 正常系: `/etc/nginx` を指定しアーカイブ生成成功（終了コード 0）。
   2. 復元検証: 別ディレクトリに展開後、`diff -r` で元データとの完全一致（終了コード 0）を確認。
   3. 改変検知: 復元ファイルを意図的に改変後、`diff -r` が差分を検知（終了コード 1）。
@@ -548,8 +548,8 @@ WantedBy=timers.target
 
 ## 4.4 CR-3: disk_check.sh（設定ファイル分離・引数上書き・入力バリデーション）
 
-* 対象ファイル: [scripts/disk_check.sh](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/scripts/disk_check.sh)（差分: [evidence/CR3.diff](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/CR3.diff)）
-* 設定ファイル: [config/disk.conf](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/config/disk.conf)（配置先: `/etc/ops/disk_check.conf`, パーミッション 600）
+* 対象ファイル: [scripts/disk_check.sh](scripts/disk_check.sh)（差分: [evidence/CR3.diff](evidence/CR3.diff)）
+* 設定ファイル: [config/disk.conf](config/disk.conf)（配置先: `/etc/ops/disk_check.conf`, パーミッション 600）
 * 課題と変更理由:
   - 【課題】監視対象マウントポイントや警告閾値がスクリプト内にハードコードされており、環境ごとの閾値変更のたびにスクリプト本体を修正する運用リスクがあった。また、`source` や `.` による外部ファイル読み込みは悪意あるコードの任意実行（コマンドインジェクション）につながる危険があった。
   - 【解決】設定ファイル `/etc/ops/disk_check.conf` へ外部化し、パーミッションを `600`（root所有）に制限。設定値の読み込みは `while read` でキーと値を1行ずつ安全に解析し、数値バリデーション（`1〜100` の整数値チェック）を実施。さらに、スクリプト実行時引数で設定値の一時上書きを可能とした。
@@ -571,7 +571,7 @@ WantedBy=timers.target
 +# 【バリデーション】数値チェックおよびマウントポイント存在確認
 ```
 
-* 検証結果（設定読み込み・引数上書き・バリデーション）（[evidence/T13_cr3_config_test.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/T13_cr3_config_test.txt)）:
+* 検証結果（設定読み込み・引数上書き・バリデーション）（[evidence/T13_cr3_config_test.txt](evidence/T13_cr3_config_test.txt)）:
   1. 設定ファイル読み込み実行: 閾値80%で判定（終了コード 0）。
   2. 引数上書き実行: 引数で閾値1%を指定し警告検知（終了コード 1）。
   3. 設定ファイル不在: `/etc/ops/disk_check.conf` がない場合に中断（終了コード 2）。
@@ -615,7 +615,7 @@ graph TD
 
 ## 5.2 【F01】Nginxプロセス停止障害（Connection refused検知）
 * 事象・検知:
-  - 作業PCおよびヘルスチェックからWebアクセスを試みた際、即座に接続拒否（`Connection refused`）となり、`health_check.sh` が終了コード 2（通信失敗）を出力（[evidence/F01_nginx_stop.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/F01_nginx_stop.txt)）。
+  - 作業PCおよびヘルスチェックからWebアクセスを試みた際、即座に接続拒否（`Connection refused`）となり、`health_check.sh` が終了コード 2（通信失敗）を出力（[evidence/F01_nginx_stop.txt](evidence/F01_nginx_stop.txt)）。
 * 調査・事実収集（仮説検証）:
   - `ss -tlpn | grep :80` を実行 → 80番ポートでの待受プロセスが存在しない（出力なし）。
   - `systemctl status nginx` を実行 → `Active: inactive (dead)` となっており、プロセス自体が停止している事実を確認。
@@ -628,7 +628,7 @@ graph TD
 
 ## 5.3 【F02】Nginx設定構文エラー（reload失敗）
 * 事象・検知:
-  - 設定変更後の反映コマンド `sudo systemctl reload nginx` が失敗（Job failed）（[evidence/F02_nginx_syntax_err.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/F02_nginx_syntax_err.txt)）。
+  - 設定変更後の反映コマンド `sudo systemctl reload nginx` が失敗（Job failed）（[evidence/F02_nginx_syntax_err.txt](evidence/F02_nginx_syntax_err.txt)）。
 * 調査・事実収集（仮説検証）:
   - `journalctl -u nginx -n 20 --no-pager` を確認 → `Reload failed` を記録。
   - 構文テストコマンド `sudo nginx -t` を実行 → `/etc/nginx/nginx.conf:87` において「`unexpected end of file, expecting ";" or "}"`」という構文エラー（セミコロンまたは中括弧の欠落）が発生している行と原因を特定。
@@ -642,7 +642,7 @@ graph TD
 
 ## 5.4 【F03】公開ファイル権限不備（HTTP 403 Forbidden）
 * 事象・検知:
-  - ブラウザおよび `curl` からアクセスすると `HTTP/1.1 403 Forbidden` が返却され、`health_check.sh` が終了コード 1（異常検知）を出力（[evidence/F03_permission_403.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/F03_permission_403.txt)）。
+  - ブラウザおよび `curl` からアクセスすると `HTTP/1.1 403 Forbidden` が返却され、`health_check.sh` が終了コード 1（異常検知）を出力（[evidence/F03_permission_403.txt](evidence/F03_permission_403.txt)）。
 * 調査・事実収集（仮説検証）:
   - `/var/log/nginx/error.log` を確認 → `open() "/usr/share/nginx/html/index.html" failed (13: Permission denied)` を記録。
   - パス全体のパーミッション階層を可視化する `namei -l /usr/share/nginx/html/index.html` を実行。
@@ -656,7 +656,7 @@ graph TD
 
 ## 5.5 【F04】ディスク容量枯渇障害（WARN検知・大容量ファイル特定）
 * 事象・検知:
-  - `disk_check.sh` が警告ログ `WARN target=/ used=87% threshold=80%` を出力し、終了コード 1 を返却（[evidence/F04_disk_full.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/F04_disk_full.txt)）。
+  - `disk_check.sh` が警告ログ `WARN target=/ used=87% threshold=80%` を出力し、終了コード 1 を返却（[evidence/F04_disk_full.txt](evidence/F04_disk_full.txt)）。
 * 調査・事実収集（仮説検証）:
   - `df -h /` で使用状況を確認 → ルートファイルシステム（`/`）の使用率が `87%` に急増。
   - 大容量ファイルの探索コマンドを実行：
@@ -675,7 +675,7 @@ graph TD
 
 ## 5.6 【F05】外部名前解決（DNS）障害（IP直打ち疎通 vs ドメイン解決不可）
 * 事象・検知:
-  - 外部API連携やパッケージ更新（dnf）時にドメイン解決が失敗（[evidence/F05_dns_failure.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/F05_dns_failure.txt)）。
+  - 外部API連携やパッケージ更新（dnf）時にドメイン解決が失敗（[evidence/F05_dns_failure.txt](evidence/F05_dns_failure.txt)）。
 * 調査・事実収集（仮説検証）:
   - 物理/仮想ネットワークの断線を切り分けるため、外部DNSのIP直打ち `ping -c 2 8.8.8.8` を実行 → パケット損失0%（RTT約10ms）でネットワーク回線自体は完全に生存していることを確認。
   - `dig +time=2 +tries=1 www.google.com` を実行 → `connection timed out; no servers could be reached` を確認。
@@ -689,7 +689,7 @@ graph TD
 
 ## 5.7 【F06】firewalldによる外部通信遮断（localhost疎通 vs 外部タイムアウト）
 * 事象・検知:
-  - 作業PCのブラウザからアクセスすると接続タイムアウト（`ERR_CONNECTION_TIMED_OUT`）が発生（[evidence/F06_firewalld_block.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/F06_firewalld_block.txt)）。
+  - 作業PCのブラウザからアクセスすると接続タイムアウト（`ERR_CONNECTION_TIMED_OUT`）が発生（[evidence/F06_firewalld_block.txt](evidence/F06_firewalld_block.txt)）。
 * 調査・事実収集（仮説検証）:
   - サーバー内部にログインしローカル疎通を確認：`curl -I http://127.0.0.1/` → `HTTP 200 OK` が正常に応答。
   - 「NginxプロセスおよびOS内部のWeb機能は健全であり、外部とサーバー間の境界ネットワークに問題がある」と特定。
@@ -707,7 +707,7 @@ graph TD
 
 ## 5.8 【F07】systemd timer 実行環境差異（非対話実行時のPATH欠落）
 * 事象・検知:
-  - 手動で `./scripts/health_check.sh` を実行すると正常（終了コード 0）であるにもかかわらず、systemdタイマー経由の実行時のみサービスが `failed (Result: exit-code)` となり、`status=2` で失敗を繰り返す（[evidence/F07_timer_env_diff.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/F07_timer_env_diff.txt)）。
+  - 手動で `./scripts/health_check.sh` を実行すると正常（終了コード 0）であるにもかかわらず、systemdタイマー経由の実行時のみサービスが `failed (Result: exit-code)` となり、`status=2` で失敗を繰り返す（[evidence/F07_timer_env_diff.txt](evidence/F07_timer_env_diff.txt)）。
 * 調査・事実収集（仮説検証）:
   - `journalctl -u portfolio-health.service -n 20 --no-pager` を確認。
   - `bash[16259]: health_check.sh: 行 24: mktemp: コマンドが見つかりません`
@@ -725,7 +725,7 @@ graph TD
 
 ## 5.9 【F08】監視エージェント（Zabbix Agent）プロセス停止検知
 * 事象・検知:
-  - 監視サーバー側でホストの監視メトリクス取得不可（監視データ途絶）を検知（[evidence/F08_zabbix_stopped.txt](file:///Users/hi/Desktop/ポートフォリオ関係/aws-linux/evidence/F08_zabbix_stopped.txt)）。
+  - 監視サーバー側でホストの監視メトリクス取得不可（監視データ途絶）を検知（[evidence/F08_zabbix_stopped.txt](evidence/F08_zabbix_stopped.txt)）。
 * 調査・事実収集（仮説検証）:
   - サーバー上で `ss -tlpn | grep 10050` を実行 → 待受なし（Port 10050 is not listening）。
   - `systemctl status zabbix-agent` を確認 → `Active: inactive (dead)` かつ `disabled` を確認。
