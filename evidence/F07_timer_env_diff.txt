@@ -4,8 +4,7 @@ $ /home/user/portfolio-lab/scripts/health_check.sh http://127.0.0.1/portfolio/he
 Exit Code: 0
 
 === 2. 障害投入（ダミーPATH設定） ===
-$ sudo sed -i '/Environment=/d' /etc/systemd/system/portfolio-health.service
-$ sudo sed -i '/\[Service\]/a Environment="PATH=/dummy"' /etc/systemd/system/portfolio-health.service
+$ sudo sed -i 's|Environment="PATH=.*"|Environment="PATH=/dummy"|' /etc/systemd/system/portfolio-health.service
 $ sudo systemctl daemon-reload
 $ sudo systemctl restart portfolio-health.service
 

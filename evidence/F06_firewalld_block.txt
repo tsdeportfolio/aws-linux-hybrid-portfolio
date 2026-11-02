@@ -1,54 +1,25 @@
-=== 1. 現在のファイアウォール設定（遮断前） ===
-$ sudo firewall-cmd --list-all
-public (active)
-  target: default
-  icmp-block-inversion: no
-  interfaces: ens160
-  sources: 
-  services: cockpit dhcpv6-client
-  ports: 
-  protocols: 
-  forward: yes
-  masquerade: no
-  forward-ports: 
-  source-ports: 
-  icmp-blocks: 
-  rich rules: 
-	rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept
-	rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
+============================================================
+障害対応記録: F06 firewalldによる外部通信遮断
+実施日時: (2026/10/28)
+============================================================
 
-=== 2. 障害投入（80番ポートルールの削除と反映） ===
-$ sudo firewall-cmd --permanent --zone=public --remove-rich-rule='rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept'
-success
-$ sudo firewall-cmd --reload
-success
+1. 障害検知・事象
+作業PC（10.10.1.1）からのHTTPアクセスがタイムアウトする。
 
-$ sudo firewall-cmd --list-all
-public (active)
-  target: default
-  icmp-block-inversion: no
-  interfaces: ens160
-  sources: 
-  services: cockpit dhcpv6-client
-  ports: 
-  protocols: 
-  forward: yes
-  masquerade: no
-  forward-ports: 
-  source-ports: 
-  icmp-blocks: 
-  rich rules: 
-	rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
+[作業PCからのcurl実行結果]
+PS C:\> curl.exe -I --connect-timeout 3 --max-time 5 http://10.10.1.100/
+curl: (28) Connection timed out after 3011 milliseconds
 
-=== 3. 外部（作業PC: 10.10.1.1）からのアクセス遮断確認 ===
-$ curl --connect-timeout 3 -I http://10.10.1.100/
-curl: (28) Failed to connect to 10.10.1.100 port 80: Connection timed out
+------------------------------------------------------------
+2. 一次切り分け（事実収集）
+サーバー内部からのHTTPアクセスは成功するため、Webサービス自体は健全であり、
+OS境界のパケットフィルタ（firewalld）によるDROPを疑う。
 
-=== 4. サーバ内部（localhost）からの疎通確認（プロセス自体の生存確認） ===
+[VMwareローカルでのcurl実行結果]
 $ curl -I http://127.0.0.1/
 HTTP/1.1 200 OK
 Server: nginx/1.20.1
-Date: Wed, 28 Oct 2026 07:58:01 GMT
+Date: Mon, 02 Nov 2026 06:08:48 GMT
 Content-Type: text/html
 Content-Length: 5760
 Last-Modified: Mon, 24 Mar 2025 16:15:24 GMT
@@ -56,43 +27,65 @@ Connection: keep-alive
 ETag: "67e1851c-1680"
 Accept-Ranges: bytes
 
-$ ss -tlpn | grep :80
-LISTEN 0      511          0.0.0.0:80         0.0.0.0:*          
-LISTEN 0      511             [::]:80            [::]:*          
+[firewalldの設定確認]
+$ sudo firewall-cmd --list-all
+public (active)
+  target: default
+  icmp-block-inversion: no
+  interfaces: ens160
+  sources:
+  services: cockpit dhcpv6-client ssh
+  ports:
+  protocols:
+  forward: yes
+  masquerade: no
+  forward-ports:
+  source-ports:
+  icmp-blocks:
+  rich rules:
+    rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
 
-=== 5. 設定復旧（80番ポート rich-rule の再投入） ===
+=> rich rulesから80番ポートの許可が消失している事実を確認。
+
+------------------------------------------------------------
+3. 復旧対応
+作業元IP（10.10.1.1/32）に限定したHTTP許可ルールを投入し反映。
+
 $ sudo firewall-cmd --permanent --zone=public --add-rich-rule='rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept'
 success
 $ sudo firewall-cmd --reload
 success
 
-=== 6. 復旧確認（ファイアウォール設定＆外部アクセス回復） ===
+------------------------------------------------------------
+4. 復旧確認
+[firewalld設定確認]
 $ sudo firewall-cmd --list-all
 public (active)
   target: default
   icmp-block-inversion: no
   interfaces: ens160
-  sources: 
+  sources:
   services: cockpit dhcpv6-client
-  ports: 
-  protocols: 
+  ports:
+  protocols:
   forward: yes
   masquerade: no
-  forward-ports: 
-  source-ports: 
-  icmp-blocks: 
-  rich rules: 
-	rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept
-	rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
+  forward-ports:
+  source-ports:
+  icmp-blocks:
+  rich rules:
+        rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept
+        rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
 
-# 作業PC（10.10.1.1）からの疎通回復確認
-$ curl -I http://10.10.1.100/
+[作業PCからの疎通確認]
+PS C:\> curl.exe -I --connect-timeout 3 --max-time 5 http://10.10.1.100/
 HTTP/1.1 200 OK
 Server: nginx/1.20.1
-Date: Wed, 28 Oct 2026 07:58:02 GMT
+Date: Mon, 02 Nov 2026 06:21:08 GMT
 Content-Type: text/html
 Content-Length: 5760
 Last-Modified: Mon, 24 Mar 2025 16:15:24 GMT
 Connection: keep-alive
 ETag: "67e1851c-1680"
 Accept-Ranges: bytes
+=> 正常に疎通が回復したことを確認。
