@@ -3,4 +3,8 @@ nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
 nginx: configuration file /etc/nginx/nginx.conf test is successful
 
 === Syslog Received Access Log ===
-tail: '/var/log/nginx_syslog.log' を 読み込み用に開くことが出来ません: 許可がありません
+Nov  4 13:59:30 portfolio-web nginx: 127.0.0.1 - - [04/Nov/2026:13:59:30 +0900] "GET /portfolio/health.txt HTTP/1.1" 200 13 "-" "curl/7.76.1" "-"
+Nov  4 14:00:57 portfolio-web nginx: 127.0.0.1 - - [04/Nov/2026:14:00:57 +0900] "GET /portfolio/health.txt HTTP/1.1" 200 13 "-" "curl/7.76.1" "-"
+Nov  4 14:02:57 portfolio-web nginx: 127.0.0.1 - - [04/Nov/2026:14:02:57 +0900] "GET /portfolio/health.txt HTTP/1.1" 200 13 "-" "curl/7.76.1" "-"
+Nov  4 14:04:05 portfolio-web nginx: 127.0.0.1 - - [04/Nov/2026:14:04:05 +0900] "HEAD /portfolio/health.txt HTTP/1.1" 200 0 "-" "curl/7.76.1" "-"
+Nov  4 14:04:57 portfolio-web nginx: 127.0.0.1 - - [04/Nov/2026:14:04:57 +0900] "GET /portfolio/health.txt HTTP/1.1" 200 13 "-" "curl/7.76.1" "-"
