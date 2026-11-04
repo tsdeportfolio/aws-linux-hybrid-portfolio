@@ -5,22 +5,22 @@
 
 ## 📌 エグゼクティブ・サマリ（1分でわかる全体像）
 
-本ポートフォリオは、**AWSクラウド環境**におけるWebインフラの基本設計・構築と運用自動化、およびそれらを**ローカル仮想化環境（VMware / AlmaLinux 9）**上で忠実に再現・比較検証した自主検証プロジェクトの全容をまとめた成果物です。
+本ポートフォリオは、AWSクラウド環境におけるWebインフラの基本設計・構築と運用自動化、およびそれらをローカル仮想化環境（VMware / AlmaLinux 9）上で忠実に再現・比較検証した自主検証プロジェクトの全容をまとめた成果物です。
 
-「手順通りに構築して終わり」ではなく、**運用現場で即戦力として求められる3つの実務能力**の実証に重きを置いています：
+「手順通りに構築して終わり」ではなく、運用現場で即戦力として求められる3つの実務能力の実証に重きを置いています：
 
-1. **根拠ある詳細パラメータ設計**: 全25項目にわたる設定理由・確認コマンドの策定（[3.1 パラメータシート](docs/parameters.csv)）
-2. **安全な変更管理による運用ツールの改修**: タイムアウト、入力バリデーション、設定分離、diff復元照合を実装（[第4章 CR-1〜CR-3](docs/change_request.md)）
-3. **8大障害シナリオに対する論理的な一次切り分け**: プロセス・ファイル権限・ネットワーク・systemd環境差異に至る階層型トラブルシューティング（[第5章 F01〜F08](evidence/)）
+1. 根拠ある詳細パラメータ設計: 全22項目にわたる設定理由・確認コマンドの策定（[3.1 パラメータシート](docs/parameters.csv)）
+2. 安全な変更管理による運用ツールの改修: タイムアウト、入力バリデーション、設定分離、diff復元照合を実装（[第4章 CR-1〜CR-3](docs/change_request.md)）
+3. 8大障害シナリオに対する論理的な一次切り分け: プロセス・ファイル権限・ネットワーク・systemd環境差異に至る階層型トラブルシューティング（[第5章 F01〜F08](evidence/)）
 
 ### 📊 プロジェクト概要一覧
 
 | 項目 | 内容 |
 | :--- | :--- |
-| **担当範囲** | 要件整理、パラメータ設計、クラウド環境構築、Linux環境再現、運用スクリプト改修、障害再現・一次切り分け実証、ドキュメント作成（全工程を自主検証として単独実施） |
-| **技術スタック** | **クラウド**: AWS (VPC, Subnet, IGW, RouteTable, EC2, IAM, SecurityGroup, CloudWatch Alarm, SNS)<br>**OS/仮想化**: Amazon Linux 2023, AlmaLinux 9.x, VMware Workstation<br>**ミドルウェア**: Nginx, systemd (Service / Timer), firewalld (rich-rule), chronyd, rsyslog, Zabbix Agent<br>**スクリプト**: Bash (引数バリデーション, 一行パース, エラーハンドリング) |
-| **主要な実績** | ・AWSとLinuxローカル環境でのWeb基盤構築と機能対比<br>・systemd timerによる自律的Web死活監視（約1〜2分間隔）の実装<br>・運用スクリプト3本の堅牢化（CR-1: 本文判定・タイムアウト, CR-2: 保存先引数化・diff照合, CR-3: 設定外部化）<br>・現場頻発障害8パターン（F01〜F08）の論理的切り分け・復旧実証 |
-| **未検証・今後の課題** | ・Zabbix Serverによる集中メトリクス収集・アラート連携（現在はAgent単体導入・ローカル取得まで検証）<br>・AWSとオンプレミスのVPN/DirectConnect閉域網接続（本検証は環境比較・再現を主眼として実施）<br>・ALB + マルチAZによる高可用性（HA）冗長化 |
+| 担当範囲 | 要件整理、パラメータ設計、クラウド環境構築、Linux環境再現、運用スクリプト改修、障害再現・一次切り分け実証、ドキュメント作成（全工程を自主検証として単独実施） |
+| 技術スタック | クラウド: AWS (VPC, Subnet, IGW, RouteTable, EC2, IAM, SecurityGroup, CloudWatch Alarm, SNS)<br>OS/仮想化: Amazon Linux 2023, AlmaLinux 9.x, VMware Workstation<br>ミドルウェア: Nginx, systemd (Service / Timer), firewalld (rich-rule), chronyd, rsyslog, Zabbix Agent<br>スクリプト: Bash (引数バリデーション, 一行パース, エラーハンドリング) |
+| 主要な実績 | ・AWSとLinuxローカル環境でのWeb基盤構築と機能対比<br>・systemd timerによる自律的Web死活監視（約1〜2分間隔）の実装<br>・運用スクリプト3本の堅牢化（CR-1: 本文判定・タイムアウト, CR-2: 保存先引数化・diff照合, CR-3: 設定外部化）<br>・現場頻発障害8パターン（F01〜F08）の論理的切り分け・復旧実証 |
+| 未検証・今後の課題 | ・Zabbix Serverによる集中メトリクス収集・アラート連携（現在はAgent単体導入・ローカル取得まで検証）<br>・AWSとオンプレミスのVPN/DirectConnect閉域網接続（本検証は環境比較・再現を主眼として実施）<br>・ALB + マルチAZによる高可用性（HA）冗長化 |
 
 ---
 
@@ -44,7 +44,7 @@
   - [3.2 Webサーバー構築とアクセス制御（Nginx / firewalld rich-rule）](#32-webサーバー構築とアクセス制御nginx--firewalld-rich-rule)
   - [3.3 運用保守・定期自動監視基盤（systemd service / timer）](#33-運用保守定期自動監視基盤systemd-service--timer)
   - [3.4 監視エージェントおよびログ集約基盤（Zabbix Agent / rsyslog）](#34-監視エージェントおよびログ集約基盤zabbix-agent--rsyslog)
-  - [3.5 基本・統合動作試験結果（T01〜T19）](#35-基本統合動作試験結果t01t19)
+  - [3.5 基本・統合動作試験結果（T01〜T16）](#35-基本統合動作試験結果t01t16)
 - [4. 運用ツールの改修実績（Change Request: CR-1 〜 CR-3）](#4-運用ツールの改修実績change-request-cr-1--cr-3)
   - [4.1 変更管理（CR）の運用方針](#41-変更管理crの運用方針)
   - [4.2 CR-1: health_check.sh（タイムアウト・応答本文検証・終了コード厳密化）](#42-cr-1-health_checkshタイムアウト応答本文検証終了コード厳密化)
@@ -60,6 +60,7 @@
   - [5.7 【F06】firewalldによる外部通信遮断（localhost疎通 vs 外部タイムアウト）](#57-f06firewalldによる外部通信遮断localhost疎通-vs-外部タイムアウト)
   - [5.8 【F07】systemd timer 実行環境差異（非対話実行時のPATH欠落）](#58-f07systemd-timer-実行環境差異非対話実行時のpath欠落)
   - [5.9 【F08】監視エージェント（Zabbix Agent）プロセス停止検知](#59-f08監視エージェントzabbix-agentプロセス停止検知)
+  - [5.10 ツール非依存の手動切り分け（3区分）と障害報告フォーマット](#510-ツール非依存の手動切り分け3区分と障害報告フォーマット)
 - [6. 総括とハイブリッド環境における習得スキル](#6-総括とハイブリッド環境における習得スキル)
   - [6.1 本プロジェクトの成果と設計意図](#61-本プロジェクトの成果と設計意図)
   - [6.2 証明される習得スキル](#62-証明される習得スキル)
@@ -142,7 +143,7 @@ AWSクラウド上の各インフラ構成要素と、オンプレミス（VMwar
 | 仮想ネットワーク | VPC (Subnet: `10.10.1.0/24`) | VMware NATモード (Subnet: `10.10.1.0/24`) | クラウドVPCのIP設計をオンプレミス環境で忠実に再現 |
 | 外部通信経路 | インターネットゲートウェイ (IGW) | 仮想NATルーター (`10.10.1.2`) | 外部インターネット接続およびデフォルトゲートウェイルーティング |
 | ファイアウォール | セキュリティグループ (SG) | `firewalld` (rich-rule設定) | クラウドの境界型防御とホストOS内部の送信元IP限定制御（`10.10.1.1/32`） |
-| リモート管理 | SSM Session Manager / SSH | SSH接続 (ポート22: 送信元IP制限) | root直接ログイン禁止、一般ユーザー（`labuser`等）による権限分離 |
+| リモート管理 | SSM Session Manager / SSH | SSH接続 (ポート22: 送信元IP制限) | root直接ログイン禁止、一般ユーザー（`user`）による権限分離 |
 | Webサーバー | Nginx (HTTP Port 80) | Nginx (HTTP Port 80) | 同一ミドルウェアを用いた設定プロセスの検証およびヘルスチェック配置 |
 | タスク自動実行 | `cron` 定時実行 | `systemd.timer` (`OnUnitActiveSec=1min`) | cronとsystemdタイマーのログ管理性（journald連携）や環境差異の比較 |
 | 運用保守ツール | 日付付き `tar` バックアップスクリプト | 改修版スクリプト群（CR-1〜CR-3） | 引数チェック、書き込み権限検証、外部設定ファイル分離、インジェクション対策 |
@@ -163,7 +164,7 @@ AWSクラウド上の各インフラ構成要素と、オンプレミス（VMwar
 ## 1.5 ローカル仮想化（AlmaLinux 9）での検証目的
 AWS環境の専用OS「Amazon Linux 2023」の再現として、パッケージ構成やベースシステムが極めて近い「AlmaLinux 9」を採用。AWS側のVPC設計（`10.10.1.0/24`）をローカル側で完全にシミュレートし、固定IPアドレスの割り当て、ホストPCからの安全なSSHリモート接続、およびOS内ファイアウォールを制御したWebサーバー（Nginx）の導入までを実証しました。
 
-さらに、**パラメータシートに基づく構成管理、systemd timerによる自律運用、Zabbix Agent等の監視基盤導入、運用ツールの設計改修（Change Request）、そして8種類の障害に対する論理的な一次切り分け**を実践・記録することで、現場で自走できるインフラエンジニアとしての実務適性を証明しています。
+さらに、パラメータシートに基づく構成管理、systemd timerによる自律運用、Zabbix Agent等の監視基盤導入、運用ツールの設計改修（Change Request）、そして8種類の障害に対する論理的な一次切り分けを実践・記録することで、現場で自走できるインフラエンジニアとしての実務適性を証明しています。
 
 ---
 
@@ -357,11 +358,10 @@ EC2インスタンスのCPU使用率（`CPUUtilization`）を監視対象とし�
 | IPv4設定方式 | `manual` | DHCPによる意図しないIP変更を防ぎ静的IP運用を担保するため | `nmcli -f ipv4.method connection show ens160` | ipv4.method: manual |
 | タイムゾーン | `Asia/Tokyo` | アクセスログ・障害ログの記録時刻を日本標準時（JST）に統一しログ照合を容易にするため | `timedatectl` | Time zone: Asia/Tokyo (JST +0900) |
 | 時刻同期（NTP） | `chronyd 有効` | 監視サーバーや作業端末との時刻乖離による障害解析・ログ順序の誤認を防ぐため | `chronyc tracking` | Leap status: Normal / Reference ID 同期確認 |
-| 権限分離用ユーザー | `labuser (uid=1001)` | rootや管理者権限を持たない一般ユーザーとして障害再現（F3権限不備・F7環境差分）を行うため | `id labuser` | uid=1001(labuser) gid=1001(labuser) groups=1001(labuser) |
 | firewalld (SSH) | `rich-rule: rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept` | 管理用SSHを作業PC（VMnet8）からのアクセスのみに限定するため | `sudo firewall-cmd --list-all / 作業PCからのSSH試行` | 10.10.1.1 から接続成功、別IPや許可前はタイムアウトを確認 |
 | firewalld (HTTP) | `rich-rule: rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept` | Web表示・ヘルスチェック確認を作業PCからのみに限定するため | `sudo firewall-cmd --list-all / 作業PCからのHTTP試行` | ブラウザおよびcurlで200 OK確認 |
 | nginx サービス | `enabled（自動起動有効化）` | サーバー再起動や障害復旧時に手動介入なしでWebサービスを復旧させるため | `systemctl is-enabled nginx / sudo reboot 後の疎通確認` | 再起動後も自動で active (running) になり応答を確認（T05） |
-| ヘルスチェック | `/usr/share/nginx/html/portfolio/health.txt (644権限)` | 運用スクリプトや監視Agentが死活判定を行うための固定レスポンスを確保するため | `curl -i [http://127.0.0.1/portfolio/health.txt](http://127.0.0.1/portfolio/health.txt)` | HTTP/1.1 200 OK、本文 portfolio-ok を確認（T03） |
+| ヘルスチェック | `/usr/share/nginx/html/portfolio/health.txt (644権限)` | 運用スクリプトや監視Agentが死活判定を行うための固定レスポンスを確保するため | `curl -i http://127.0.0.1/portfolio/health.txt` | HTTP/1.1 200 OK、本文 portfolio-ok を確認（T03） |
 | portfolio-health.service | `ExecStart=/usr/bin/bash /home/user/portfolio-lab/scripts/health_check.sh http://127.0.0.1/portfolio/health.txt portfolio-ok` | CR-1改修に伴いURLに加え期待本文文字列（portfolio-ok）を引数として渡すため | `systemctl status portfolio-health.service` | code=exited, status=0/SUCCESS でスクリプトが正常終了することを確認 |
 | portfolio-health.timer | `OnUnitActiveSec=1min` | 約1〜2分間隔（前回終了から1分後）でWebヘルスチェックを自動実行 | `systemctl list-timers --all \| grep portfolio` | NEXT/LASTが約1〜2分間隔で更新 |
 | backup_dir.sh (CR-2) | `引数指定（$1:対象 $2:保存先）` | バックアップ保存先を実行時に任意指定可能にし、事前検証で権限不足や対象不在時の異常終了を担保するため | `sudo ./scripts/backup_dir.sh /etc/nginx $PWD/backups/nginx` | 正常終了（コード0）および権限不足・対象不在時の異常検知（コード2）を確認 |
@@ -371,7 +371,6 @@ EC2インスタンスのCPU使用率（`CPUUtilization`）を監視対象とし�
 | Zabbix Server接続許可 | `127.0.0.1` | ローカル検証および監視元からの問い合わせのみに制限するため | `grep "^Server=" /etc/zabbix/zabbix_agentd.conf` | Server=127.0.0.1 |
 | rsyslog転送設定 | `/etc/rsyslog.d/50-nginx-forward.conf` | WebアクセスログをOS標準のsyslog基盤へ集約・隔離転送するため | `ls -l /etc/rsyslog.d/50-nginx-forward.conf` | -rw-r--r-- 1 root root 102 10月 26 16:50 /etc/rsyslog.d/50-nginx-forward.conf |
 | nginx syslog出力 | `facility=local6,tag=nginx,severity=info` | 障害・アクセスログをローカル保存と並行してsyslog連携するため | `nginx -T \| grep syslog` | access_log syslog:server=127.0.0.1... |
-| firewalld (ポート80許可) | `80/tcp (rich-rule: 10.10.1.1/32)` | 管理端末からのHTTPアクセスのみを許可し不正侵入を防ぐため | `sudo firewall-cmd --list-all` | rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept確認 |
 | portfolio-health 実行環境PATH | `Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"` | systemd非対話実行時に標準コマンド探索失敗を防ぐため | `systemctl cat portfolio-health.service` | PATH定義確認 |
 | Zabbix Agent サービス | `enabled (自動起動有効化)` | OS再起動時にも監視停止（サイレント障害）を発生させないため | `systemctl is-enabled zabbix-agent` | enabled確認 |
 
@@ -460,8 +459,8 @@ WantedBy=timers.target
 
 ---
 
-## 3.5 基本・統合動作試験結果（T01〜T19）
-構築したオンプレミス環境の健全性を客観的に証明するため、全19項目のテストケースを策定し、正常系・異常系・統合動作の検証を実施しました。すべての試験で「合格（想定通りの結果）」を記録しています（[docs/test_results.csv](docs/test_results.csv)）。
+## 3.5 基本・統合動作試験結果（T01〜T16）
+構築したオンプレミス環境の健全性を客観的に証明するため、全16項目（19パターン）のテストケースを策定し、正常系・異常系・統合動作の検証を実施しました。すべての試験で「合格（想定通りの結果）」を記録しています（[docs/test_results.csv](docs/test_results.csv)）。
 
 | No | 確認項目 | 期待する結果 | 実際の結果 | 判定 | 証跡エビデンス |
 | :---: | :--- | :--- | :--- | :---: | :--- |
@@ -470,20 +469,20 @@ WantedBy=timers.target
 | T03 | 内部HTTP応答 | HTTP 200、本文 `portfolio-ok` | `200 OK, portfolio-ok` | 合格 | [evidence/T03_internal_http.txt](evidence/T03_internal_http.txt) |
 | T04 | 外部HTTP応答 | 作業PCブラウザ/curlから同一応答 | `200 OK, portfolio-ok` | 合格 | [evidence/T04_browser_access.png](evidence/T04_browser_access.png) |
 | T05 | 再起動後の自動起動 | reboot後もNginx自動起動、応答維持 | active、uptime直後、200 OK | 合格 | [evidence/T05_reboot_check.txt](evidence/T05_reboot_check.txt) |
-| T06 | Web監視 正常系 | `health_check.sh` の終了コード 0 | 終了コード 0 を確認 | 合格 | [evidence/T06_health_ok.txt](evidence/T06_health_ok.txt) |
-| T07 | Web監視 HTTP異常 | 404または本文不一致で終了コード 1 | 404指定で終了コード 1 を確認 | 合格 | [evidence/T06_health_404.txt](evidence/T06_health_404.txt) |
-| T08 | Web監視 接続失敗 | 接続拒否・タイムアウトで終了コード 2 | 未使用ポート指定でコード 2 確認 | 合格 | [evidence/T06_health_connfail.txt](evidence/T06_health_connfail.txt) |
-| T09 | ディスク監視 正常 | `disk_check.sh` の終了コード 0 | 閾値80%で終了コード 0 を確認 | 合格 | [evidence/T07_diskok.txt](evidence/T07_diskok.txt) |
-| T10 | ディスク監視 警告 | 閾値超過時に終了コード 1 | 閾値1%指定で終了コード 1 を確認 | 合格 | [evidence/T07_disk_warn.txt](evidence/T07_disk_warn.txt) |
-| T11 | ディスク監視 失敗 | 対象不在・閾値不正で終了コード 2 | 存在しないパス指定でコード 2 確認 | 合格 | [evidence/T07_disk_fail.txt](evidence/T07_disk_fail.txt) |
-| T12 | バックアップと復元 | 別フォルダへ復元し diff で一致 | 設定とhtmlを展開しdiffなし(SAME) | 合格 | [evidence/T08_backup_exec.txt](evidence/T08_backup_exec.txt) [evidence/T09_backup_exec.txt](evidence/T09_backup_exec.txt) |
-| T13 | Web監視 定期実行 | タイマーにより定期実行＆停止ログ記録 | 約1〜2分間隔実行、停止時status=2記録 | 合格 | [evidence/T10_timer_repeat.txt](evidence/T10_timer_repeat.txt) |
-| T14 | CR-1 改修試験 | 5パターン(0/1/1/2/2)が正しく返る | 全5パターン想定通りのコード確認 | 合格 | [evidence/T11_cr1_test.txt](evidence/T11_cr1_test.txt) |
-| T15 | CR-2 改修試験 | 保存先引数化・事前検証・diff照合 | diff完全一致(0)・改変検知(1)確認 | 合格 | [evidence/T12_cr2_backup_test.txt](evidence/T12_cr2_backup_test.txt) |
-| T16 | CR-3 改修試験 | 設定分離・引数上書き・入力チェック | 全4パターン想定通り動作確認 | 合格 | [evidence/T13_cr3_config_test.txt](evidence/T13_cr3_config_test.txt) |
-| T17 | Zabbix Agent 稼働 | サービスactive、メトリクス取得成功 | 10050 LISTEN、CPU/disk取得 | 合格 | [evidence/T14_zabbix_agent.txt](evidence/T14_zabbix_agent.txt) |
-| T18 | syslog ログ転送 | HTTPアクセス時にsyslog出力 | syslogヘッダー付き200ログ記録 | 合格 | [evidence/T15_rsyslog_forward.txt](evidence/T15_rsyslog_forward.txt) |
-| T19 | アラーム検知確認 | 404ログ記録・ディスク超過ログ出力 | syslog404・ops_alert.log WARN記録 | 合格 | [evidence/T16_alarm_detect.txt](evidence/T16_alarm_detect.txt) |
+| T06-1 | Web監視 正常系 | `health_check.sh` の終了コード 0 | 終了コード 0 を確認 | 合格 | [evidence/T06_health_ok.txt](evidence/T06_health_ok.txt) |
+| T06-2 | Web監視 HTTP異常 | 404または本文不一致で終了コード 1 | 404指定で終了コード 1 を確認 | 合格 | [evidence/T06_health_404.txt](evidence/T06_health_404.txt) |
+| T06-3 | Web監視 接続失敗 | 接続拒否・タイムアウトで終了コード 2 | 未使用ポート指定でコード 2 確認 | 合格 | [evidence/T06_health_connfail.txt](evidence/T06_health_connfail.txt) |
+| T07-1 | ディスク監視 正常 | `disk_check.sh` の終了コード 0 | 閾値80%で終了コード 0 を確認 | 合格 | [evidence/T07_diskok.txt](evidence/T07_diskok.txt) |
+| T07-2 | ディスク監視 警告 | 閾値超過時に終了コード 1 | 閾値1%指定で終了コード 1 を確認 | 合格 | [evidence/T07_disk_warn.txt](evidence/T07_disk_warn.txt) |
+| T07-3 | ディスク監視 失敗 | 対象不在・閾値不正で終了コード 2 | 存在しないパス指定でコード 2 確認 | 合格 | [evidence/T07_disk_fail.txt](evidence/T07_disk_fail.txt) |
+| T08 / T09 | バックアップと復元 | 別フォルダへ復元し diff で一致 | 設定とhtmlを展開しdiffなし(SAME) | 合格 | [evidence/T08_backup_exec.txt](evidence/T08_backup_exec.txt) [evidence/T09_backup_exec.txt](evidence/T09_backup_exec.txt) |
+| T10 | Web監視 定期実行 | タイマーにより定期実行＆停止ログ記録 | 約1〜2分間隔実行、停止時status=2記録 | 合格 | [evidence/T10_timer_repeat.txt](evidence/T10_timer_repeat.txt) |
+| T11 | CR-1 改修試験 | 5パターン(0/1/1/2/2)が正しく返る | 全5パターン想定通りのコード確認 | 合格 | [evidence/T11_cr1_test.txt](evidence/T11_cr1_test.txt) |
+| T12 | CR-2 改修試験 | 保存先引数化・事前検証・diff照合 | diff完全一致(0)・改変検知(1)確認 | 合格 | [evidence/T12_cr2_backup_test.txt](evidence/T12_cr2_backup_test.txt) |
+| T13 | CR-3 改修試験 | 設定分離・引数上書き・入力チェック | 全4パターン想定通り動作確認 | 合格 | [evidence/T13_cr3_config_test.txt](evidence/T13_cr3_config_test.txt) |
+| T14 | Zabbix Agent 稼働 | サービスactive、メトリクス取得成功 | 10050 LISTEN、CPU/disk取得 | 合格 | [evidence/T14_zabbix_agent.txt](evidence/T14_zabbix_agent.txt) |
+| T15 | syslog ログ転送 | HTTPアクセス時にsyslog出力 | syslogヘッダー付き200ログ記録 | 合格 | [evidence/T15_rsyslog_forward.txt](evidence/T15_rsyslog_forward.txt) |
+| T16 | アラーム検知確認 | 404ログ記録・ディスク超過ログ出力 | syslog404・WARNログ出力とコード1記録 | 合格 | [evidence/T16_alarm_detect.txt](evidence/T16_alarm_detect.txt) |
 
 ---
 
@@ -675,7 +674,7 @@ graph TD
 
 ## 5.4 【F03】公開ファイル権限不備（HTTP 403 Forbidden）
 * 事象・検知:
-  - ブラウザおよび `curl` からアクセスすると `HTTP/1.1 403 Forbidden` が返却され、`health_check.sh` が終了コード 1（異常検知）を出力（[evidence/F03_permission_403.txt](evidence/F03_permission_403.txt)）。
+  - ブラウザおよび `curl` から公開トップページ（`http://10.10.1.100/`）へアクセスすると `HTTP/1.1 403 Forbidden` が返却され、トップページを引数に指定して `./scripts/health_check.sh http://10.10.1.100 "Test"` を実行した際に終了コード 1（異常検知）を出力（[evidence/F03_permission_403.txt](evidence/F03_permission_403.txt)）。
 * 調査・事実収集（仮説検証）:
   - `/var/log/nginx/error.log` を確認 → `open() "/usr/share/nginx/html/index.html" failed (13: Permission denied)` を記録。
   - パス全体のパーミッション階層を可視化する `namei -l /usr/share/nginx/html/index.html` を実行。
@@ -683,7 +682,7 @@ graph TD
 * 原因: 公開ファイルのアクセス権限設定ミス（読み取り権限不足）。
 * 復旧手順と確認:
   - `sudo chmod 644 /usr/share/nginx/html/index.html` により一般読み取り権限を付与。
-  - `curl -I` にて `HTTP/1.1 200 OK` が返却されることを確認。
+  - `curl -I http://10.10.1.100/` にて `HTTP/1.1 200 OK` が返却されることを確認。
 
 ---
 
@@ -770,6 +769,30 @@ graph TD
 
 ---
 
+## 5.10 ツール非依存の手動切り分け（3区分）と障害報告フォーマット
+実務の障害一次対応においては、監視スクリプトや監視エージェント自体が異常を起こしているケース（誤検知やサイレント障害）も考慮し、自動化ツールに頼らずOS標準コマンドのみで手動切り分けを行う手順、および上位エスカレーション時の標準報告フォーマット（[docs/incident_template.md](docs/incident_template.md)）を定義しています。
+
+### ① ツール非依存の手動切り分け（3つの責任区分）
+アラート発報または異常認知時、以下の3区分で原因の所在を迅速に切り分けます：
+
+| 区分 | 切り分け対象 | 手動確認コマンド（ツール非依存） | 判定基準 |
+| :--- | :--- | :--- | :--- |
+| 1. サービス自体 | Webサーバー（Nginx）・OSリソース・NW境界 | `systemctl status nginx`<br>`ss -tlpn \| grep :80`<br>`curl -i http://127.0.0.1/portfolio/health.txt`<br>`sudo firewall-cmd --list-all`<br>`df -h /` | ローカル `curl` やプロセス状態が異常であれば、監視ツールの問題ではなくWebサービスまたはOS自体の実障害と判定（F01〜F06）。 |
+| 2. 運用ツール自体 | 監視・保守スクリプトのロジックや設定ファイル | `bash -n scripts/health_check.sh`<br>`cat /etc/ops/disk_check.conf`<br>`./scripts/health_check.sh http://127.0.0.1/portfolio/health.txt portfolio-ok` | サービス自体が正常（`curl` で200 OK）なのにスクリプト手動実行がエラーとなる場合、スクリプトの引数指定・設定ファイル（CR-3等）の不備と判定。 |
+| 3. 実行環境 | systemd service / timer、環境変数、実行ユーザー権限 | `systemctl status portfolio-health.service`<br>`journalctl -u portfolio-health.service -n 20`<br>`systemctl cat portfolio-health.service`<br>`namei -l /usr/share/nginx/html/index.html` | 対話シェルでのスクリプト手動実行は成功（コード0）するのに、timer経由の自動実行のみ失敗する場合は、非対話環境の `PATH` 欠落や `User=` 権限差異と判定（F07）。 |
+
+### ② 一次切り分けの報告フォーマット（事実と推測の分離）
+上位エンジニアへのエスカレーションや顧客報告を行う際は、思い込みによる誤誘導を防ぐため、[docs/incident_template.md](docs/incident_template.md) に基づき「確認した事実」「未確認事項・仮説」「次の調査・対応アクション」を明確に分離して報告します：
+
+* 確認した事実（Fact）:
+  - 発生時刻（タイムゾーン付き）、実行したコマンド、出力されたエラーメッセージ・終了コード、および取得した証跡ファイル（`evidence/F*.txt`）のみを客観的に記載。
+* 仮説と未確認事項（Hypothesis & Unverified）:
+  - 事実から導かれる原因の推測と、現時点でまだ確認できていない範囲（否定できた仮説も含む）を明記。
+* 次の調査・対応（Next Action）:
+  - 復旧に向けて実施する具体的なコマンド（設定変更やサービス再起動）、影響範囲、切り戻し方法、および次回報告予定時刻を提示。
+
+---
+
 # 6. 総括とハイブリッド環境における習得スキル
 
 ## 6.1 本プロジェクトの成果と設計意図
@@ -778,7 +801,7 @@ graph TD
 特に以下の設計・運用アプローチは、現場での実務を強く意識したものとなっています：
 1. セキュリティと最小権限の徹底:
    - AWSでのセキュリティグループ（マイIP制限）とSSM連携、オンプレミスでの `firewalld` rich-rule による `10.10.1.1/32` 限定通信。
-   - 一般ユーザー（`labuser`）の分離、設定ファイル（`disk_check.conf`）のパーミッション `600` 保護。
+   - 一般ユーザー（`user`）による運用・サービス実行の分離、設定ファイル（`disk_check.conf`）のパーミッション `600` 保護。
 2. 安全な変更管理（Change Request）プロセスの実践:
    - スクリプト改修時における「事前バリデーション」「タイムアウト考慮」「終了コード厳密化」「復元後diff差分照合」「ロールバック手順の明記」。
 3. 論理的な障害切り分けアプローチ:
