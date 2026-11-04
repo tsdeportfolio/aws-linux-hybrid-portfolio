@@ -350,23 +350,30 @@ EC2インスタンスのCPU使用率（`CPUUtilization`）を監視対象とし�
 
 | 設定項目 | 設定値 | 設定理由（設計思想） | 確認コマンド | 確認結果 |
 | :--- | :--- | :--- | :--- | :--- |
-| ホスト名 | `portfolio-web` | 複数サーバー運用時の誤操作防止およびログでの識別 | `hostnamectl` | `Static hostname: portfolio-web` |
-| IPv4アドレス | `10.10.1.100/24` | 管理端末から恒常的に同一アドレスで疎通・運用するため | `ip -br addr` | `ens160 に 10.10.1.100/24 が UP` |
-| デフォルトGW | `10.10.1.2` | VMware NAT仮想ルーターを経由して外部と通信するため | `ip route` | `default via 10.10.1.2 dev ens160` |
-| DNSサーバー | `10.10.1.2`, `8.8.8.8` | パッケージ導入（dnf）や名前解決を安全に行うため | `cat /etc/resolv.conf` | `nameserver 10.10.1.2` / `8.8.8.8` |
-| IPv4設定方式 | `manual` | DHCPによる意図しないIP変更を防ぎ静的運用を担保 | `nmcli -f ipv4.method con show ens160` | `ipv4.method: manual` |
-| タイムゾーン | `Asia/Tokyo` | アクセスログ・障害ログを日本標準時に統一しログ照合を容易化 | `timedatectl` | `Time zone: Asia/Tokyo (JST, +0900)` |
-| 時刻同期 (NTP) | `chronyd` 有効 | 監視サーバーや作業端末との時刻乖離による障害解析誤認を防止 | `chronyc tracking` | `Leap status: Normal / Reference ID 同期` |
-| 権限分離ユーザー | `labuser` (`uid=1001`) | root権限を持たない一般ユーザーとして障害再現・権限検証を実施 | `id labuser` | `uid=1001(labuser) groups=1001` |
-| firewalld (SSH) | `rich-rule` (送信元: `10.10.1.1/32`) | 管理用SSHを作業PCからのみに限定し全開放を防止 | `sudo firewall-cmd --list-all` | `source 10.10.1.1/32 port=22 accept` |
-| firewalld (HTTP) | `rich-rule` (送信元: `10.10.1.1/32`) | Web表示・ヘルスチェック確認を作業PCからのみに限定 | `sudo firewall-cmd --list-all` | `source 10.10.1.1/32 port=80 accept` |
-| Nginx サービス | `enabled`（自動起動） | サーバー再起動や障害復旧時に手動介入なしでサービス復帰 | `systemctl is-enabled nginx` | `enabled`（再起動後もactive維持確認） |
-| ヘルスチェック先 | `/usr/share/nginx/html/portfolio/health.txt` | 監視スクリプトが死活判定を行う固定レスポンスを確保（権限644） | `curl -i http://127.0.0.1/portfolio/health.txt` | `HTTP 200 OK`, 本文 `portfolio-ok` |
-| 定期監視サービス | `portfolio-health.service` | CR-1スクリプトを期待値引数付きで呼び出し自動死活判定 | `systemctl status portfolio-health.service` | `status=0/SUCCESS` |
-| 定期監視タイマー | `portfolio-health.timer` | 約1〜2分間隔（前回終了から1分後）でWebヘルスチェックを自動実行 | `systemctl list-timers --all \| grep portfolio` | `NEXT/LASTが約1〜2分間隔で更新` |
-| ディスク監視設定 | `/etc/ops/disk_check.conf` | スクリプトのハードコードを排除し環境差分を吸収（権限600） | `stat -c "%a" /etc/ops/disk_check.conf` | `600`（root所有・改ざん防止） |
-| Zabbix Agent | ポート `10050/TCP` | Zabbix Serverからのポーリング（メトリクス収集）を受け付け | `ss -tlpn \| grep 10050` | `LISTEN 0.0.0.0:10050` |
-| rsyslog転送 | `/etc/rsyslog.d/50-nginx-forward.conf` | Webアクセスログをsyslog基盤へ集約・隔離転送 | `nginx -T \| grep syslog` | `facility=local6,tag=nginx` |
+| ホスト名 | `portfolio-web` | 複数サーバー運用時の誤操作防止および各種システムログでの識別のため | `hostnamectl` | Static hostname: portfolio-web |
+| IPv4アドレス | `10.10.1.100/24` | Webサーバーとして管理端末から恒常的に同一アドレスで疎通・運用するため | `ip -br addr` | ens160 に 10.10.1.100/24 が UP |
+| デフォルトゲートウェイ | `10.10.1.2` | VMware NAT仮想ルーターを経由して外部ネットワークおよびインターネットと通信するため | `ip route` | default via 10.10.1.2 dev ens160 が登録 |
+| DNSサーバー | `10.10.1.2 8.8.8.8` | パッケージ導入（dnf）や名前解決を安全に行うため | `cat /etc/resolv.conf` | nameserver 10.10.1.2 と 8.8.8.8 が設定 |
+| IPv4設定方式 | `manual` | DHCPによる意図しないIP変更を防ぎ静的IP運用を担保するため | `nmcli -f ipv4.method connection show ens160` | ipv4.method: manual |
+| タイムゾーン | `Asia/Tokyo` | アクセスログ・障害ログの記録時刻を日本標準時（JST）に統一しログ照合を容易にするため | `timedatectl` | Time zone: Asia/Tokyo (JST +0900) |
+| 時刻同期（NTP） | `chronyd 有効` | 監視サーバーや作業端末との時刻乖離による障害解析・ログ順序の誤認を防ぐため | `chronyc tracking` | Leap status: Normal / Reference ID 同期確認 |
+| 権限分離用ユーザー | `labuser (uid=1001)` | rootや管理者権限を持たない一般ユーザーとして障害再現（F3権限不備・F7環境差分）を行うため | `id labuser` | uid=1001(labuser) gid=1001(labuser) groups=1001(labuser) |
+| firewalld (SSH) | `rich-rule: rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept` | 管理用SSHを作業PC（VMnet8）からのアクセスのみに限定するため | `sudo firewall-cmd --list-all / 作業PCからのSSH試行` | 10.10.1.1 から接続成功、別IPや許可前はタイムアウトを確認 |
+| firewalld (HTTP) | `rich-rule: rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept` | Web表示・ヘルスチェック確認を作業PCからのみに限定するため | `sudo firewall-cmd --list-all / 作業PCからのHTTP試行` | ブラウザおよびcurlで200 OK確認 |
+| nginx サービス | `enabled（自動起動有効化）` | サーバー再起動や障害復旧時に手動介入なしでWebサービスを復旧させるため | `systemctl is-enabled nginx / sudo reboot 後の疎通確認` | 再起動後も自動で active (running) になり応答を確認（T05） |
+| ヘルスチェック | `/usr/share/nginx/html/portfolio/health.txt (644権限)` | 運用スクリプトや監視Agentが死活判定を行うための固定レスポンスを確保するため | `curl -i [http://127.0.0.1/portfolio/health.txt](http://127.0.0.1/portfolio/health.txt)` | HTTP/1.1 200 OK、本文 portfolio-ok を確認（T03） |
+| portfolio-health.service | `ExecStart=/usr/bin/bash /home/user/portfolio-lab/scripts/health_check.sh http://127.0.0.1/portfolio/health.txt portfolio-ok` | CR-1改修に伴いURLに加え期待本文文字列（portfolio-ok）を引数として渡すため | `systemctl status portfolio-health.service` | code=exited, status=0/SUCCESS でスクリプトが正常終了することを確認 |
+| portfolio-health.timer | `OnUnitActiveSec=1min` | 約1〜2分間隔（前回終了から1分後）でWebヘルスチェックを自動実行 | `systemctl list-timers --all \| grep portfolio` | NEXT/LASTが約1〜2分間隔で更新 |
+| backup_dir.sh (CR-2) | `引数指定（$1:対象 $2:保存先）` | バックアップ保存先を実行時に任意指定可能にし、事前検証で権限不足や対象不在時の異常終了を担保するため | `sudo ./scripts/backup_dir.sh /etc/nginx $PWD/backups/nginx` | 正常終了（コード0）および権限不足・対象不在時の異常検知（コード2）を確認 |
+| disk_check設定ファイル | `/etc/ops/disk_check.conf` | スクリプト本体のハードコードを排除し環境差分を吸収するため | `ls -l /etc/ops/disk_check.conf` | -rw------- 1 root root 82 10月 26 15:40 /etc/ops/disk_check.conf |
+| disk_check.conf権限 | `600` | 設定値改ざんや第三者による不正閲覧を防止するため | `stat -c "%a" /etc/ops/disk_check.conf` | 600 |
+| Zabbixエージェントポート | `10050/TCP` | Zabbix Serverからのポーリング（メトリクス収集）を受け付けるため | `ss -tlpn \| grep 10050` | LISTEN 0 4096 0.0.0.0:10050 0.0.0.0:* |
+| Zabbix Server接続許可 | `127.0.0.1` | ローカル検証および監視元からの問い合わせのみに制限するため | `grep "^Server=" /etc/zabbix/zabbix_agentd.conf` | Server=127.0.0.1 |
+| rsyslog転送設定 | `/etc/rsyslog.d/50-nginx-forward.conf` | WebアクセスログをOS標準のsyslog基盤へ集約・隔離転送するため | `ls -l /etc/rsyslog.d/50-nginx-forward.conf` | -rw-r--r-- 1 root root 102 10月 26 16:50 /etc/rsyslog.d/50-nginx-forward.conf |
+| nginx syslog出力 | `facility=local6,tag=nginx,severity=info` | 障害・アクセスログをローカル保存と並行してsyslog連携するため | `nginx -T \| grep syslog` | access_log syslog:server=127.0.0.1... |
+| firewalld (ポート80許可) | `80/tcp (rich-rule: 10.10.1.1/32)` | 管理端末からのHTTPアクセスのみを許可し不正侵入を防ぐため | `sudo firewall-cmd --list-all` | rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept確認 |
+| portfolio-health 実行環境PATH | `Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"` | systemd非対話実行時に標準コマンド探索失敗を防ぐため | `systemctl cat portfolio-health.service` | PATH定義確認 |
+| Zabbix Agent サービス | `enabled (自動起動有効化)` | OS再起動時にも監視停止（サイレント障害）を発生させないため | `systemctl is-enabled zabbix-agent` | enabled確認 |
 
 ---
 
@@ -469,7 +476,7 @@ WantedBy=timers.target
 | T09 | ディスク監視 正常 | `disk_check.sh` の終了コード 0 | 閾値80%で終了コード 0 を確認 | 合格 | [evidence/T07_diskok.txt](evidence/T07_diskok.txt) |
 | T10 | ディスク監視 警告 | 閾値超過時に終了コード 1 | 閾値1%指定で終了コード 1 を確認 | 合格 | [evidence/T07_disk_warn.txt](evidence/T07_disk_warn.txt) |
 | T11 | ディスク監視 失敗 | 対象不在・閾値不正で終了コード 2 | 存在しないパス指定でコード 2 確認 | 合格 | [evidence/T07_disk_fail.txt](evidence/T07_disk_fail.txt) |
-| T12 | バックアップと復元 | 別フォルダへ復元し diff で一致 | 設定とhtmlを展開しdiffなし(SAME) | 合格 | [evidence/T08_backup_exec.txt](evidence/T08_backup_exec.txt) |
+| T12 | バックアップと復元 | 別フォルダへ復元し diff で一致 | 設定とhtmlを展開しdiffなし(SAME) | 合格 | [evidence/T08_backup_exec.txt](evidence/T08_backup_exec.txt) [evidence/T09_backup_exec.txt](evidence/T09_backup_exec.txt) |
 | T13 | Web監視 定期実行 | タイマーにより定期実行＆停止ログ記録 | 約1〜2分間隔実行、停止時status=2記録 | 合格 | [evidence/T10_timer_repeat.txt](evidence/T10_timer_repeat.txt) |
 | T14 | CR-1 改修試験 | 5パターン(0/1/1/2/2)が正しく返る | 全5パターン想定通りのコード確認 | 合格 | [evidence/T11_cr1_test.txt](evidence/T11_cr1_test.txt) |
 | T15 | CR-2 改修試験 | 保存先引数化・事前検証・diff照合 | diff完全一致(0)・改変検知(1)確認 | 合格 | [evidence/T12_cr2_backup_test.txt](evidence/T12_cr2_backup_test.txt) |
