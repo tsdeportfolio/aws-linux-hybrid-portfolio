@@ -20,7 +20,7 @@
 | 担当範囲 | 要件整理、パラメータ設計、クラウド環境構築、Linux環境再現、運用スクリプト改修、障害再現・一次切り分け実証、ドキュメント作成（全工程を自主検証として単独実施） |
 | 技術スタック | クラウド: AWS (VPC, Subnet, IGW, RouteTable, EC2, IAM, SecurityGroup, CloudWatch Alarm, SNS)<br>OS/仮想化: Amazon Linux 2023, AlmaLinux 9.x, VMware Workstation<br>ミドルウェア: Nginx, systemd (Service / Timer), firewalld (rich-rule), chronyd, rsyslog, Zabbix Agent<br>スクリプト: Bash (引数バリデーション, 一行パース, エラーハンドリング) |
 | 主要な実績 | ・AWSとLinuxローカル環境でのWeb基盤構築と機能対比<br>・systemd timerによる自律的Web死活監視（約1〜2分間隔）の実装<br>・運用スクリプト3本の堅牢化（CR-1: 本文判定・タイムアウト, CR-2: 保存先引数化・diff照合, CR-3: 設定外部化）<br>・現場頻発障害8パターン（F01〜F08）の論理的切り分け・復旧実証 |
-| 未検証・今後の課題 | ・Zabbix Serverによる集中メトリクス収集・アラート連携（現在はAgent単体導入・ローカル取得まで検証）<br>・AWSとオンプレミスのVPN/DirectConnect閉域網接続（本検証は環境比較・再現を主眼として実施）<br>・ALB + マルチAZによる高可用性（HA）冗長化 |
+| 未検証・今後の課題 | ・CloudWatch AgentによるAWS側のカスタムメトリクス・ログ転送（現在はEC2標準メトリクス監視・SNS通知まで実装）<br>・Zabbix Serverによる集中メトリクス収集・アラート連携（現在はAgent単体導入・ローカル取得まで検証）<br>・AWSとオンプレミスのVPN/DirectConnect閉域網接続（本検証は環境比較・再現を主眼として実施）<br>・ALB + マルチAZによる高可用性（HA）冗長化 |
 
 ---
 
@@ -147,8 +147,8 @@ AWSクラウド上の各インフラ構成要素と、オンプレミス（VMwar
 | Webサーバー | Nginx (HTTP Port 80) | Nginx (HTTP Port 80) | 同一ミドルウェアを用いた設定プロセスの検証およびヘルスチェック配置 |
 | タスク自動実行 | `cron` 定時実行 | `systemd.timer` (`OnUnitActiveSec=1min`) | cronとsystemdタイマーのログ管理性（journald連携）や環境差異の比較 |
 | 運用保守ツール | 日付付き `tar` バックアップスクリプト | 改修版スクリプト群（CR-1〜CR-3） | 引数チェック、書き込み権限検証、外部設定ファイル分離、インジェクション対策 |
-| 死活・リソース監視 | Amazon CloudWatch / SNS | Zabbix Agent (Port 10050) & スクリプト | クラウド統合監視とOSSエージェントによるメトリクス収集の対比 |
-| ログ管理 | CloudWatch Logs (CWAgent) | `rsyslog` 転送 (local6ファシリティ) | OS標準syslog機構を用いたリアルタイムログ隔離・転送 |
+| 死活・リソース監視 | Amazon CloudWatch (標準メトリクス / Alarm / SNS) | Zabbix Agent (Port 10050) & スクリプト | クラウド統合監視とOSSエージェントによるメトリクス収集の対比 |
+| ログ管理 | OSローカルログ出力（CWAgent連携は今後の課題） | `rsyslog` 転送 (local6ファシリティ) | OS標準syslog機構を用いたリアルタイムログ隔離・転送 |
 
 ## 1.4 AWSクラウド環境の主要設計値
 
@@ -816,13 +816,14 @@ graph TD
 * 運用保守自動化およびスクリプト開発・改修力（Bash / SRE実務）
   - 単なる処理の自動化にとどまらず、コマンドインジェクション対策（1行パース）、入力値バリデーション、タイムアウト設定、異常終了コードの設計、systemd service & timer による自律監視の構築。
 * 監視およびログ集約基盤の運用能力
-  - CloudWatch Agent（カスタムメトリクス）、Zabbix Agent（Port 10050）、rsyslog（ファシリティ連携）を用いたリアルタイムログ集約と障害検知体制の構築。
+  - Amazon CloudWatch（標準メトリクス監視 / Alarm / SNS通知）、Zabbix Agent（Port 10050）、rsyslog（ファシリティ連携）を用いたリアルタイムログ集約と障害検知体制の構築。
 * 現場標準の障害一次切り分け・トラブルシューティング力
   - プロセス停止、設定構文エラー、アクセス権限不備（403/namei）、ディスク枯渇（du/find）、DNS解決不備（ping vs dig）、ファイアウォール遮断、systemd環境変数差分（PATH 127）、エージェント停止など、現場で直面する多角的なトラブルに対する論理的解決力。
 
 ## 6.3 今後の展望
 今後は、構築したシングルサーバー環境から発展させ、実務における高可用性・耐障害性・セキュリティをさらに向上させるための以下の取り組みを検討します。
 
+- クラウド監視の拡張: CloudWatch Agent 導入によるメモリ・ディスク等のカスタムメトリクス監視および CloudWatch Logs へのWebログ集約。
 - Infrastructure as Code (IaC) の導入: Ansible によるオンプレミスAlmaLinuxのパラメータ自動プロビジョニング、および Terraform によるAWSリソースのコード管理。
 - 高可用性（HA）化: ALB（Application Load Balancer）と複数AZのサブネットにEC2を冗長配置（マルチAZ構成）し、オートスケーリング（Auto Scaling）による負荷連動型の拡張性を実装。
 - CI/CDパイプラインとの統合: GitHub Actions を用いた運用スクリプトの構文チェック（ShellCheck）およびステージング環境への自動デプロイパイプラインの構築。
