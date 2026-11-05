@@ -13,7 +13,7 @@ nginx サービス,enabled（自動起動有効化）,サーバー再起動や�
 portfolio-health.service,"ExecStart=/usr/bin/bash /home/user/portfolio-lab/scripts/health_check.sh http://127.0.0.1/portfolio/health.txt portfolio-ok",CR-1改修に伴いURLに加え期待本文文字列（portfolio-ok）を引数として渡すため,systemctl status portfolio-health.service,"code=exited, status=0/SUCCESS でスクリプトが正常終了することを確認"
 portfolio-health.timer,OnUnitActiveSec=1min,約1〜2分間隔（前回終了から1分後）でWebヘルスチェックを自動実行,systemctl list-timers --all | grep portfolio,NEXT/LASTが約1〜2分間隔で更新
 backup_dir.sh (CR-2),引数指定（$1:対象 $2:保存先）,"バックアップ保存先を実行時に任意指定可能にし、事前検証で権限不足や対象不在時の異常終了を担保するため","sudo ./scripts/backup_dir.sh /etc/nginx $PWD/backups/nginx","正常終了（コード0）および権限不足・対象不在時の異常検知（コード2）を確認"
-disk_check設定ファイル,/etc/ops/disk_check.conf,スクリプト本体のハードコードを排除し環境差分を吸収するため,ls -l /etc/ops/disk_check.conf,"-rw------- 1 root root 82 10月 26 15:40 /etc/ops/disk_check.conf"
+disk_check設定ファイル,/etc/ops/disk_check.conf,スクリプト本体のハードコードを排除し環境差分を吸収するため,ls -l /etc/ops/disk_check.conf,"-rw------- 1 root root 86 10月 26 15:40 /etc/ops/disk_check.conf"
 disk_check.conf権限,600,設定値改ざんや第三者による不正閲覧を防止するため,stat -c "%a" /etc/ops/disk_check.conf,600
 Zabbixエージェントポート,10050/TCP,Zabbix Serverからのポーリング（メトリクス収集）を受け付けるため,ss -tlpn | grep 10050,"LISTEN 0 4096 0.0.0.0:10050 0.0.0.0:*"
 Zabbix Server接続許可,127.0.0.1,ローカル検証および監視元からの問い合わせのみに制限するため,grep "^Server=" /etc/zabbix/zabbix_agentd.conf,Server=127.0.0.1

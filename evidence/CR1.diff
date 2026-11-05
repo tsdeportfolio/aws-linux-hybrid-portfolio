@@ -1,6 +1,6 @@
 --- scripts.orig/health_check.sh	2026-10-21 15:25:11.000000000 +0900
 +++ scripts/health_check.sh	2026-10-23 13:43:45.186007368 +0900
-@@ -1,19 +1,57 @@
+@@ -1,17 +1,57 @@
  #!/usr/bin/env bash
 -# Usage: health_check.sh [URL]
 -set -u

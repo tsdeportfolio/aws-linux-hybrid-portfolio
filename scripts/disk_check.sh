@@ -38,12 +38,14 @@ fi
 # （以降、既存のディスク使用率チェックと終了コード判定ロジック）
 target="${1:-$TARGET_MOUNT}"
 threshold="${2:-$WARN_THRESHOLD}"
-if [[ ! "$threshold" =~ ^[0-9]{1,3}$ ]]; then
+crit_threshold="${3:-$CRIT_THRESHOLD}"
+if [[ ! "$threshold" =~ ^[0-9]{1,3}$ ]] || [[ ! "$crit_threshold" =~ ^[0-9]{1,3}$ ]]; then
     echo 'UNKNOWN reason=invalid_threshold' >&2
     exit 2
 fi
 threshold=$((10#$threshold))
-if (( threshold < 1 || threshold > 100 )); then
+crit_threshold=$((10#$crit_threshold))
+if (( threshold < 1 || threshold > 100 || crit_threshold < 1 || crit_threshold > 100 )); then
     echo 'UNKNOWN reason=threshold_out_of_range' >&2
     exit 2
 fi
@@ -59,6 +61,11 @@ if [[ ! "$used" =~ ^[0-9]+$ ]]; then
     exit 2
 fi
 now=$(date -Iseconds)
+if (( used >= crit_threshold )); then
+    printf '%s CRIT target=%s used=%s%% threshold=%s%%\n' \
+        "$now" "$target" "$used" "$crit_threshold" >&2
+    exit 1
+fi
 if (( used >= threshold )); then
     printf '%s WARN target=%s used=%s%% threshold=%s%%\n' \
         "$now" "$target" "$used" "$threshold" >&2

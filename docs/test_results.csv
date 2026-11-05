@@ -5,7 +5,7 @@ T03,内部HTTP応答,HTTP 200、本文 portfolio-ok,"200 OK, portfolio-ok",合�
 T04,外部HTTP応答,作業PCのブラウザ/curlから同じ応答,"200 OK, portfolio-ok",合格,evidence/T04_browser_access.png
 T05,再起動後も疎通・自動起動が成立,reboot後もnginx自動起動、応答維持,active、uptime直後、200 OK確認,合格,evidence/T05_reboot_check.txt
 T06-1,Web監視 正常,health_check.sh の終了コード 0,終了コード 0 を確認,合格,evidence/T06_health_ok.txt
-T06-2,Web監視 HTTP異常,404 または本文不一致で終了コード 1,404 指定で終了コード 1 を確認,合格,evidence/T06_health_404.txt
+T06-2,Web監視 HTTP異常,HTTP 404等の異常時に終了コード 1,404 指定で終了コード 1 を確認,合格,evidence/T06_health_404.txt
 T06-3,Web監視 接続失敗,接続拒否・タイムアウトで終了コード 2,ポート1番指定で終了コード 2 を確認,合格,evidence/T06_health_connfail.txt
 T07-1,ディスク監視 正常,disk_check.sh の終了コード 0,閾値80%で終了コード 0 を確認,合格,evidence/T07_diskok.txt
 T07-2,ディスク監視 閾値警告,終了コード 1,閾値1%で終了コード 1 を確認,合格,evidence/T07_disk_warn.txt

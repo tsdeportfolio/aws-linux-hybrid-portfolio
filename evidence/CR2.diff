@@ -1,6 +1,6 @@
 --- scripts.orig/backup_dir.sh	2026-10-21 15:25:11.000000000 +0900
 +++ scripts/backup_dir.sh	2026-10-23 15:13:47.076480643 +0900
-@@ -1,14 +1,56 @@
+@@ -1,13 +1,56 @@
 -#!/usr/bin/env bash
 -# Usage: backup_dir.sh SOURCE_DIRECTORY [SUBDIR_NAME]
 -set -u

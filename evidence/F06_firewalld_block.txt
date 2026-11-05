@@ -1,6 +1,6 @@
 ============================================================
 障害対応記録: F06 firewalldによる外部通信遮断
-実施日時: (2026/10/28)
+実施日時: 2026/10/28（2026/11/02 再検証）
 ============================================================
 
 1. 障害検知・事象
@@ -34,7 +34,7 @@ public (active)
   icmp-block-inversion: no
   interfaces: ens160
   sources:
-  services: cockpit dhcpv6-client ssh
+  services: cockpit dhcpv6-client
   ports:
   protocols:
   forward: yes

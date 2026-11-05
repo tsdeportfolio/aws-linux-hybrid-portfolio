@@ -181,7 +181,7 @@ AWS環境の専用OS「Amazon Linux 2023」の再現として、パッケージ�
 
 #### ② パブリックサブネットの作成
 仮想サーバーを配置するため、VPC内にCIDR範囲 `10.10.1.0/24` のパブリックサブネットを切り出し。
-![サブネット詳細](img/VPC_subnet.jpg)
+![サブネット詳細](img/VPC_subnet.png)
 
 #### ③ インターネットゲートウェイ（IGW）の接続
 VPC内部から外部インターネットと双方向通信を行うためのIGWを作成し、VPCにアタッチ。
@@ -286,20 +286,24 @@ free -m
 ---
 
 ## 2.5 運用保守の自動化（シェルスクリプトによる定時バックアップ実装）
-運用の信頼性を高め手動オペレーションを削減するため、Nginx設定ディレクトリの自動圧縮バックアップおよび定時タスク実行（cron）の仕組みを構築しました。
+運用の信頼性を高め手動オペレーションを削減するため、Nginxの稼働確認・設定ディレクトリの自動圧縮バックアップ、および定時タスク実行（cron）の仕組みを構築しました。
 
 #### ① ディレクトリ構造の設計と権限管理の適正化
 バックアップ専用フォルダ `/var/backup` を作成。初期作成時のroot所有権による一般ユーザー（`ec2-user`）の書込エラー（Permission denied）を解決するため、適切に所有権を `chown` で変更し、最小権限に即したセキュリティを確保。
 
 #### ② 日付付与型バックアップ自動化スクリプト（`backup.sh`）の作成と実行権限付与
-Nginxの設定ディレクトリ `/etc/nginx` を圧縮アーカイブ化し、バックアップ世代管理のためにファイル名に動的に実行日（`date +%Y%m%d`）を付与するシェルスクリプトを実装。また、作成したスクリプトに実行権限を付与。
+Nginxの設定ディレクトリ `/etc/nginx` を圧縮アーカイブ化し、バックアップ世代管理のためにファイル名に動的に実行日（`date +%Y%m%d`）を付与するシェルスクリプトを実装。あわせて、作成したスクリプトに実行権限を付与し、Nginxの稼働状態を `/var/log/nginx_monitor.log` へ記録する監視スクリプト（`monitor.sh`）も整備。
 
 ```bash
 #!/bin/bash
+# バックアップを保存するフォルダ
 BACKUP_DIR="/var/backup"
+# 保存するファイル名（日付を入れる）
 BACKUP_FILE="nginx_backup_$(date +%Y%m%d).tar.gz"
 
+# バックアップを実行（Nginxの設定フォルダを固める）
 tar -czf "$BACKUP_DIR/$BACKUP_FILE" /etc/nginx
+
 echo "Backup completed: $BACKUP_FILE"
 ```
 
@@ -310,14 +314,14 @@ chmod +x backup.sh
 #### ③ スクリプト自動実行（cronタスクスケジュール）の登録
 crontabを編集し、システム負荷の低い深夜時間帯（毎日午前3:00）に完全自動でバックアップ処理を実行するよう設定。
 ```text
-0 3 * * * /bin/bash /home/ec2-user/backup.sh >> /home/ec2-user/backup.log 2>&1
+0 3 * * * /home/ec2-user/backup.sh
 ```
 
 #### ④ 動作および自動実行の検証結果
-実行ログの確認、`/var/backup` ディレクトリにおけるアーカイブの生成、および圧縮データ内にNginxの設定ファイル群が漏れなく含まれていることを `tar -tf` で検証。タスクスケジュール登録が `crontab -l` でシステムに正しく認識されていることを確認しました。
-![ログおよびアーカイブ生成確認](img/monitor_log.png)
-![バックアップアーカイブファイル確認](img/backup_made.png)
-![バックアップアーカイブ中身検証](img/backup_inside.png)
+稼働監視スクリプト（`monitor.sh`）による稼働ログ記録の確認、バックアップスクリプト（`backup.sh`）の内容確認と手動実行による `/var/backup` ディレクトリ配下への日付付きアーカイブ（`nginx_backup_20260616.tar.gz`）生成、およびタスクスケジュール登録が `crontab -l` でシステムに正しく認識されていることを確認しました。
+![稼働監視スクリプト実行およびログ確認](img/monitor_log.png)
+![バックアップスクリプト実行およびアーカイブ生成確認](img/backup_made.png)
+![バックアップスクリプト内容確認](img/backup_inside.png)
 ![crontabスケジュール登録確認](img/crontab-result.png)
 
 ---
@@ -326,12 +330,12 @@ crontabを編集し、システム負荷の低い深夜時間帯（毎日午前3
 インフラの異常を即座に検知し対応可能にするため、EC2リソース監視システムおよび管理者へのリアルタイムメール通知システムを構築しました。
 
 #### ① CloudWatch アラーム閾値の定義
-EC2インスタンスのCPU使用率（`CPUUtilization`）を監視対象とし、「80%以上が5分（1期間）継続した場合」をアラーム判定基準に指定。
+EC2インスタンスのCPU使用率（`CPUUtilization`）を監視対象とし、「80%超（80より大きい状態）が5分（1期間）継続した場合」をアラーム判定基準に指定。
 ![監視メトリクスの選択](img/cloudwatch_alert_metrics1.png)
 ![アラーム閾値の設定](img/cloudwatch_alerm.png)
 
 #### ② Amazon SNSと連携した管理者通知アクションの設定
-アラーム通知用のSNSトピック（`EC2-CPU-Alert-Topic`）を作成し、アラーム遷移時に指定の管理者宛てに即座に通知メールを配信するアクションを定義。
+アラーム通知用のSNSトピック（`EC2-CPU-Alert-Topic01`）を作成し、アラーム遷移時に指定の管理者宛てに即座に通知メールを配信するアクションを定義。
 ![SNS通知アクションの設定](img/cloudWatch-action.png)
 
 #### ③ 通知サブスクリプションの購読アクティベート
@@ -365,7 +369,7 @@ EC2インスタンスのCPU使用率（`CPUUtilization`）を監視対象とし�
 | portfolio-health.service | `ExecStart=/usr/bin/bash /home/user/portfolio-lab/scripts/health_check.sh http://127.0.0.1/portfolio/health.txt portfolio-ok` | CR-1改修に伴いURLに加え期待本文文字列（portfolio-ok）を引数として渡すため | `systemctl status portfolio-health.service` | code=exited, status=0/SUCCESS でスクリプトが正常終了することを確認 |
 | portfolio-health.timer | `OnUnitActiveSec=1min` | 約1〜2分間隔（前回終了から1分後）でWebヘルスチェックを自動実行 | `systemctl list-timers --all \| grep portfolio` | NEXT/LASTが約1〜2分間隔で更新 |
 | backup_dir.sh (CR-2) | `引数指定（$1:対象 $2:保存先）` | バックアップ保存先を実行時に任意指定可能にし、事前検証で権限不足や対象不在時の異常終了を担保するため | `sudo ./scripts/backup_dir.sh /etc/nginx $PWD/backups/nginx` | 正常終了（コード0）および権限不足・対象不在時の異常検知（コード2）を確認 |
-| disk_check設定ファイル | `/etc/ops/disk_check.conf` | スクリプト本体のハードコードを排除し環境差分を吸収するため | `ls -l /etc/ops/disk_check.conf` | -rw------- 1 root root 82 10月 26 15:40 /etc/ops/disk_check.conf |
+| disk_check設定ファイル | `/etc/ops/disk_check.conf` | スクリプト本体のハードコードを排除し環境差分を吸収するため | `ls -l /etc/ops/disk_check.conf` | -rw------- 1 root root 86 10月 26 15:40 /etc/ops/disk_check.conf |
 | disk_check.conf権限 | `600` | 設定値改ざんや第三者による不正閲覧を防止するため | `stat -c "%a" /etc/ops/disk_check.conf` | 600 |
 | Zabbixエージェントポート | `10050/TCP` | Zabbix Serverからのポーリング（メトリクス収集）を受け付けるため | `ss -tlpn \| grep 10050` | LISTEN 0 4096 0.0.0.0:10050 0.0.0.0:* |
 | Zabbix Server接続許可 | `127.0.0.1` | ローカル検証および監視元からの問い合わせのみに制限するため | `grep "^Server=" /etc/zabbix/zabbix_agentd.conf` | Server=127.0.0.1 |
@@ -455,7 +459,7 @@ WantedBy=timers.target
 障害発生時のログ改ざん防止や集中管理を想定し、Nginxのアクセスログを標準のファイル出力に加え、OSのsyslog機構（`local6` ファシリティ）へリアルタイム転送する設定を導入しました。
 - 設定ファイル: `/etc/rsyslog.d/50-nginx-forward.conf`
 - 転送先: `/var/log/nginx_syslog.log`
-- 動作検証: 作業PCからのWebアクセスに伴い、リアルタイムにsyslogヘッダー付きログが記録されることを確認（[evidence/T15_rsyslog_forward.txt](evidence/T15_rsyslog_forward.txt)）。
+- 動作検証: Webアクセス（ヘルスチェック等）に伴い、リアルタイムにsyslogヘッダー付きログが記録されることを確認（[evidence/T15_rsyslog_forward.txt](evidence/T15_rsyslog_forward.txt)）。
 
 ---
 
@@ -470,7 +474,7 @@ WantedBy=timers.target
 | T04 | 外部HTTP応答 | 作業PCブラウザ/curlから同一応答 | `200 OK, portfolio-ok` | 合格 | [evidence/T04_browser_access.png](evidence/T04_browser_access.png) |
 | T05 | 再起動後の自動起動 | reboot後もNginx自動起動、応答維持 | active、uptime直後、200 OK | 合格 | [evidence/T05_reboot_check.txt](evidence/T05_reboot_check.txt) |
 | T06-1 | Web監視 正常系 | `health_check.sh` の終了コード 0 | 終了コード 0 を確認 | 合格 | [evidence/T06_health_ok.txt](evidence/T06_health_ok.txt) |
-| T06-2 | Web監視 HTTP異常 | 404または本文不一致で終了コード 1 | 404指定で終了コード 1 を確認 | 合格 | [evidence/T06_health_404.txt](evidence/T06_health_404.txt) |
+| T06-2 | Web監視 HTTP異常 | HTTP 404等の異常時に終了コード 1 | 404指定で終了コード 1 を確認 | 合格 | [evidence/T06_health_404.txt](evidence/T06_health_404.txt) |
 | T06-3 | Web監視 接続失敗 | 接続拒否・タイムアウトで終了コード 2 | 未使用ポート指定でコード 2 確認 | 合格 | [evidence/T06_health_connfail.txt](evidence/T06_health_connfail.txt) |
 | T07-1 | ディスク監視 正常 | `disk_check.sh` の終了コード 0 | 閾値80%で終了コード 0 を確認 | 合格 | [evidence/T07_diskok.txt](evidence/T07_diskok.txt) |
 | T07-2 | ディスク監視 警告 | 閾値超過時に終了コード 1 | 閾値1%指定で終了コード 1 を確認 | 合格 | [evidence/T07_disk_warn.txt](evidence/T07_disk_warn.txt) |
@@ -607,7 +611,7 @@ WantedBy=timers.target
   1. 設定ファイル読み込み実行: 閾値80%で判定（終了コード 0）。
   2. 引数上書き実行: 引数で閾値1%を指定し警告検知（終了コード 1）。
   3. 設定ファイル不在: `/etc/ops/disk_check.conf` がない場合に中断（終了コード 2）。
-  4. パラメータ不正: 閾値に文字列が設定されていた場合に型不正として中断（終了コード 2）。
+  4. パラメータ不正: 閾値（設定ファイルまたは引数）に文字列が指定された場合に型不正として中断（終了コード 2）。
 * 切り戻し手順: `cp -a scripts.orig/disk_check.sh scripts/disk_check.sh`
 
 ---
@@ -761,7 +765,7 @@ graph TD
 * 調査・事実収集（仮説検証）:
   - サーバー上で `ss -tlpn | grep 10050` を実行 → 待受なし（Port 10050 is not listening）。
   - `systemctl status zabbix-agent` を確認 → `Active: inactive (dead)` かつ `disabled` を確認。
-  - `/var/log/zabbix/zabbix_agentd.log` を確認 → `Got signal to stop. Exiting ...`（SIGTERMによる正常終了ログ）が残されており、異常クラッシュではなくサービス停止コマンドが投入されていた事実を特定。
+  - `/var/log/zabbix/zabbix_agentd.log` を確認 → `Got signal [signal:15(SIGTERM),...]. Exiting ...`（SIGTERMによる正常終了ログ）が残されており、異常クラッシュではなくサービス停止コマンドが投入されていた事実を特定。
 * 原因: 監視エージェントプロセスの停止および自動起動設定の解除。
 * 復旧手順と確認:
   - 即時起動および自動起動有効化：`sudo systemctl enable --now zabbix-agent`

@@ -1,1 +1,5 @@
+$ sudo ./scripts/backup_dir.sh /usr/share/nginx/html
 2026-10-22T15:02:49+09:00 OK archive=/home/user/portfolio-lab/backups/html/backup-20261022-150249-3942.tar.gz
+$ mkdir -p /tmp/restore_t09 && sudo tar -xzf /home/user/portfolio-lab/backups/html/backup-20261022-150249-3942.tar.gz -C /tmp/restore_t09
+$ sudo diff -r /usr/share/nginx/html /tmp/restore_t09/usr/share/nginx/html && echo SAME
+SAME
