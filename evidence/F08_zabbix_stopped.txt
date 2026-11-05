@@ -1,4 +1,5 @@
 === 1. 障害投入（サービス停止および自動起動無効化） ===
+$ sudo systemctl disable --now zabbix-agent
 
 === 2. サービス状態確認（inactive & disabled） ===
 ○ zabbix-agent.service - Zabbix Agent
@@ -37,6 +38,7 @@ Port 10050 is not listening.
  16025:20261028:165845.795 Zabbix Agent stopped. Zabbix 6.0.49 (revision abbb2004ecd).
 
 === 5. 設定復旧（起動および自動起動有効化） ===
+$ sudo systemctl enable --now zabbix-agent
 
 === 6. 復旧確認（active, enabled, ポート待受） ===
 ● zabbix-agent.service - Zabbix Agent

@@ -449,7 +449,7 @@ WantedBy=timers.target
 ※本検証ではエージェントプロセスの待受およびローカルでのメトリクス取得までを実証しており、Zabbix Serverによる統合監視・アラーム通知は今後の拡張課題としています。
 - 待受ポート: `10050/TCP` が `0.0.0.0` で LISTEN していることを確認。
 - 監視許可元: `/etc/zabbix/zabbix_agentd.conf` にて `Server=127.0.0.1` を設定し、不審なホストからのメトリクス窃取を防御。
-- 動作検証: `zabbix_agentd -t system.cpu.util` および `vfs.fs.size[/,pused]` により、CPU使用率やディスク使用率のメトリクスが即座に取得できることを実証（[evidence/T14_zabbix_agent.txt](evidence/T14_zabbix_agent.txt)）。
+- 動作検証: `zabbix_agentd -t system.cpu.load[all,avg1]` および `vfs.fs.size[/,free]` により、CPU負荷（ロードアベレージ）やディスク空き容量のメトリクスが即座に取得できることを実証（[evidence/T14_zabbix_agent.txt](evidence/T14_zabbix_agent.txt)）。
 
 ### ② Nginx アクセスログの rsyslog リアルタイム転送
 障害発生時のログ改ざん防止や集中管理を想定し、Nginxのアクセスログを標準のファイル出力に加え、OSのsyslog機構（`local6` ファシリティ）へリアルタイム転送する設定を導入しました。
@@ -465,7 +465,7 @@ WantedBy=timers.target
 | No | 確認項目 | 期待する結果 | 実際の結果 | 判定 | 証跡エビデンス |
 | :---: | :--- | :--- | :--- | :---: | :--- |
 | T01 | 作業PCからSSH接続できる | ログインできホスト名がportfolio-web | 接続成功、ホスト名確認 | 合格 | [evidence/T01_ssh_login.png](evidence/T01_ssh_login.png) |
-| T02 | 時刻同期が有効 | chronyd同期、TZがAsia/Tokyo | NTP synchronized: yes 確認 | 合格 | [evidence/T02_ntp_sync.png](evidence/T02_ntp_sync.png) |
+| T02 | 時刻同期が有効 | chronyd同期、TZがAsia/Tokyo | System clock synchronized: yes 確認 | 合格 | [evidence/T02_ntp_sync.png](evidence/T02_ntp_sync.png) |
 | T03 | 内部HTTP応答 | HTTP 200、本文 `portfolio-ok` | `200 OK, portfolio-ok` | 合格 | [evidence/T03_internal_http.txt](evidence/T03_internal_http.txt) |
 | T04 | 外部HTTP応答 | 作業PCブラウザ/curlから同一応答 | `200 OK, portfolio-ok` | 合格 | [evidence/T04_browser_access.png](evidence/T04_browser_access.png) |
 | T05 | 再起動後の自動起動 | reboot後もNginx自動起動、応答維持 | active、uptime直後、200 OK | 合格 | [evidence/T05_reboot_check.txt](evidence/T05_reboot_check.txt) |
@@ -765,7 +765,7 @@ graph TD
 * 原因: 監視エージェントプロセスの停止および自動起動設定の解除。
 * 復旧手順と確認:
   - 即時起動および自動起動有効化：`sudo systemctl enable --now zabbix-agent`
-  - `ss -tlpn | grep 10050` で LISTEN 復帰を確認し、`zabbix_agentd -t system.cpu.util` でメトリクス応答が回復したことを確認。
+  - `systemctl status zabbix-agent` で `active (running)` かつ `enabled` への復帰を確認し、`ss -tlpn | grep 10050` でポート 10050 の LISTEN 回復を確認。
 
 ---
 

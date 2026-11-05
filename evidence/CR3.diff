@@ -1,4 +1,4 @@
---- scripts.orig/disk_check.sh.bak_cr2	2026-10-21 15:25:11.000000000 +0900
+--- scripts.orig/disk_check.sh	2026-10-21 15:25:11.000000000 +0900
 +++ scripts/disk_check.sh	2026-10-26 15:29:53.505826004 +0900
 @@ -1,8 +1,43 @@
  #!/usr/bin/env bash

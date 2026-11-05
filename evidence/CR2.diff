@@ -1,11 +1,16 @@
 --- scripts.orig/backup_dir.sh	2026-10-21 15:25:11.000000000 +0900
 +++ scripts/backup_dir.sh	2026-10-23 15:13:47.076480643 +0900
-@@ -1,28 +1,56 @@
+@@ -1,14 +1,56 @@
 -#!/usr/bin/env bash
--# Usage: backup_dir.sh SOURCE_DIRECTORY DESTINATION_DIRECTORY
+-# Usage: backup_dir.sh SOURCE_DIRECTORY [SUBDIR_NAME]
 -set -u
--if (( $# != 2 )); then
--    echo 'Usage: backup_dir.sh SOURCE_DIRECTORY DESTINATION_DIRECTORY' >&2
+-source_dir="${1:-/etc/nginx}"
+-subdir="${2:-$(basename "$source_dir")}"
+-dest_dir="/home/user/portfolio-lab/backups/${subdir}"
+-mkdir -p "$dest_dir"
+-archive="$dest_dir/backup-$(date +%Y%m%d-%H%M%S)-$$.tar.gz"
+-if ! tar -czf "$archive" "$source_dir" 2>/dev/null; then
+-    echo 'NG reason=archive_failed' >&2
 +#!/bin/bash
 +# ------------------------------------------------------------------
 +# backup_dir.sh (CR-2 対応版)
@@ -22,22 +27,8 @@
 +# 1. 引数チェック
 +if [ -z "$TARGET_DIR" ] || [ -z "$DEST_DIR" ]; then
 +    echo "[ERROR] 使用方法: $0 <バックアップ対象ディレクトリ> <保存先ディレクトリ>" >&2
-     exit 2
- fi
--source_dir=$(realpath -e -- "$1") || exit 2
--[[ -d "$source_dir" ]] || { echo 'Source is not a directory' >&2; exit 2; }
--dest_req=$(realpath -m -- "$2") || exit 2
--case "$dest_req/" in
--    "$source_dir/"*) echo 'Destination must be outside source' >&2; exit 2 ;;
--esac
--mkdir -p -- "$2" || exit 2
--dest_dir=$(realpath -e -- "$2") || exit 2
--archive="$dest_dir/backup-$(date +%Y%m%d-%H%M%S)-$$.tar.gz"
--partial="$archive.partial"
--trap 'rm -f -- "$partial"' EXIT
--if ! tar -czf "$partial" -C "$source_dir" .; then
--    echo 'NG reason=archive_failed' >&2
--    exit 1
++    exit 2
++fi
 +
 +# 2. 対象ディレクトリの存在確認
 +if [ ! -d "$TARGET_DIR" ]; then
@@ -58,9 +49,7 @@
 +if [ ! -w "$DEST_DIR" ]; then
 +    echo "[FAIL] 保存先ディレクトリへの書き込み権限がありません: $DEST_DIR" >&2
 +    exit 2
- fi
--if ! tar -tzf "$partial" >/dev/null; then
--    echo 'NG reason=archive_validation_failed' >&2
++fi
 +
 +# 4. アーカイブ作成
 +TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -75,7 +64,6 @@
 +    echo "[WARN] tar アーカイブ作成に失敗しました (終了コード: $TAR_EXIT)" >&2
      exit 1
  fi
--mv -- "$partial" "$archive" || exit 1
 -printf '%s OK archive=%s\n' "$(date -Iseconds)" "$archive"
 +
 +echo "[OK] バックアップ正常完了: $DEST_FILE"

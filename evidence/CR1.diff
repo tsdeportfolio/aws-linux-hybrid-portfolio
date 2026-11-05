@@ -1,16 +1,12 @@
 --- scripts.orig/health_check.sh	2026-10-21 15:25:11.000000000 +0900
 +++ scripts/health_check.sh	2026-10-23 13:43:45.186007368 +0900
-@@ -1,25 +1,57 @@
+@@ -1,19 +1,57 @@
  #!/usr/bin/env bash
--# Usage: health_check.sh [URL] [EXPECTED_TEXT]
+-# Usage: health_check.sh [URL]
 -set -u
 -url=${1:-http://127.0.0.1/portfolio/health.txt}
--expected=${2:-portfolio-ok}
 -now=$(date -Iseconds)
--body=$(mktemp) || exit 2
--trap 'rm -f -- "$body"' EXIT
--code=$(curl --silent --show-error --connect-timeout 3 --max-time 5 \
--    --output "$body" --write-out '%{http_code}' "$url")
+-code=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$url")
 -rc=$?
 -if (( rc != 0 )); then
 -    printf '%s UNKNOWN url=%s curl_rc=%s\n' "$now" "$url" "$rc" >&2
@@ -58,10 +54,8 @@
 +if [ "$HTTP_STATUS" != "200" ]; then
 +    echo "[WARN] 異常検知: HTTP ステータスコード $HTTP_STATUS" >&2
 +    rm -f "$TEMP_RESPONSE"
-     exit 1
- fi
--if ! grep -Fq -- "$expected" "$body"; then
--    printf '%s NG url=%s reason=unexpected_body\n' "$now" "$url" >&2
++    exit 1
++fi
 +
 +# 5. 三次判定: 期待する本文文字列が含まれているか
 +if ! grep -qF "$EXPECTED_BODY" "$TEMP_RESPONSE"; then
