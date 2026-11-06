@@ -12,12 +12,12 @@ firewalld (HTTP),"rich-rule: rule family=""ipv4"" source address=""10.10.1.1/32"
 nginx サービス,enabled（自動起動有効化）,サーバー再起動や障害復旧時に手動介入なしでWebサービスを復旧させるため,systemctl is-enabled nginx / sudo reboot 後の疎通確認,再起動後も自動で active (running) になり応答を確認（T05）
 ヘルスチェック,/usr/share/nginx/html/portfolio/health.txt (644権限),運用スクリプトや監視Agentが死活判定を行うための固定レスポンスを確保するため,curl -i http://127.0.0.1/portfolio/health.txt,HTTP/1.1 200 OK、本文 portfolio-ok を確認（T03）
 portfolio-health.service,"ExecStart=/usr/bin/bash /home/user/portfolio-lab/scripts/health_check.sh http://127.0.0.1/portfolio/health.txt portfolio-ok",CR-1改修に伴いURLに加え期待本文文字列（portfolio-ok）を引数として渡すため,systemctl status portfolio-health.service,"code=exited, status=0/SUCCESS でスクリプトが正常終了することを確認"
-portfolio-health.timer,OnUnitActiveSec=1min,約1〜2分間隔（前回終了から1分後）でWebヘルスチェックを自動実行,systemctl list-timers --all | grep portfolio,NEXT/LASTが約1〜2分間隔で更新
+portfolio-health.timer,OnUnitActiveSec=1min,前回のサービス起動（アクティベート）から約1分後にWebヘルスチェックを次回実行（実行時間やタイマー精度により実際の間隔は約1〜2分で変動）,systemctl list-timers --all | grep portfolio,NEXT/LASTが約1〜2分間隔で更新
 backup_dir.sh (CR-2),引数指定（$1:対象 $2:保存先）,"バックアップ保存先を実行時に任意指定可能にし、事前検証で権限不足や対象不在時の異常終了を担保するため","sudo ./scripts/backup_dir.sh /etc/nginx /home/user/portfolio-lab/backups/nginx","正常終了（コード0）および権限不足・対象不在時の異常検知（コード2）を確認"
 disk_check設定ファイル,/etc/ops/disk_check.conf,スクリプト本体のハードコードを排除し環境差分を吸収するため,sudo ls -l /etc/ops/disk_check.conf,"-rw-------. 1 root root 86 10月 27 15:40 /etc/ops/disk_check.conf"
 disk_check.conf権限,600 (root:root / sudo実行前提),設定値改ざんや一般ユーザーによる不正閲覧を防止するため（disk_check.shはsudoで実行）,sudo stat -c "%a" /etc/ops/disk_check.conf,600
-Zabbixエージェントポート,10050/TCP,Zabbix Serverからのポーリング（メトリクス収集）を受け付けるため,ss -tlpn | grep 10050,"LISTEN 0 4096 0.0.0.0:10050 0.0.0.0:*"
-Zabbixエージェント設定,Server=127.0.0.1（既定値） / Hostname=portfolio-web,ローカル検証のみに制限（Server/ServerActiveはパッケージ既定値を維持）しホスト識別名を明示するため,"grep -E ""^(Server|Hostname)="" /etc/zabbix/zabbix_agentd.conf","Server=127.0.0.1, Hostname=portfolio-web"
+Zabbixエージェントポート,10050/TCP,将来的なZabbix Server連携を想定しAgentの待受ポート10050/TCPを確認するため（現段階ではServer未構築のため外部開放は行わず対象ホスト上でのAgent起動とローカルメトリクス取得までを検証）,ss -tlpn | grep 10050,"LISTEN 0 4096 0.0.0.0:10050 0.0.0.0:*"
+Zabbixエージェント設定,Server=127.0.0.1 / ServerActive=127.0.0.1 / Hostname=portfolio-web,ServerおよびServerActiveは127.0.0.1に設定してローカル検証に限定しホスト識別名を明示するため（実環境の設定値も同一であることを確認）,"grep -E ""^(Server|ServerActive|Hostname)="" /etc/zabbix/zabbix_agentd.conf","Server=127.0.0.1, ServerActive=127.0.0.1, Hostname=portfolio-web"
 rsyslog転送設定,/etc/rsyslog.d/50-nginx-forward.conf,Webアクセスログを同一サーバー内のsyslog基盤（/var/log/nginx_syslog.log）へローカル集約・分離記録するため,sudo ls -l /etc/rsyslog.d/50-nginx-forward.conf,"-rw-r--r--. 1 root root 345 10月 26 16:37 /etc/rsyslog.d/50-nginx-forward.conf"
 nginx syslog出力,"facility=local6,tag=nginx,severity=info",アクセスログを通常のファイル保存と並行してローカルsyslog（local6）へ連携するため,sudo nginx -T | grep syslog,access_log syslog:server=127.0.0.1...
 portfolio-health 実行環境PATH,"Environment=""PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin""",systemdの既定PATH（/usr/bin等を含む）を明示し誤ったPATH上書きによるコマンド未検出（コード127）を防ぐため,systemctl cat portfolio-health.service,PATH定義確認

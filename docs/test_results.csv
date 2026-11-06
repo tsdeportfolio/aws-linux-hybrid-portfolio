@@ -15,7 +15,7 @@ T10,Web監視定期実行（timer）,タイマーによりスクリプトが継�
 T11,CR-1 health_check 改修試験（5パターン）,正常(0)・本文不一致(1)・404(1)・接続拒否(2)・タイムアウト(2) が正しく返ること,5パターンすべて想定通りの終了コード（0/1/1/2/2）を確認,合格,evidence/T11_cr1_test.txt
 T12,CR-2 backup_dir 改修・別手順での復元diff照合,保存先引数化・対象不在/作成不可/書込不可(-w)でコード2・展開後diff一致・改変検知,全6パターン（mkdir失敗と-w権限不足の双方を含む）で想定通りの終了コード(0/2/1)を確認,合格,evidence/T12_cr2_backup_test.txt
 T13,"CR-3 disk_check 改修・設定分離・バリデーション（8パターン）",設定読込(0)・引数上書き(1)・不在/読込不可/文字列(引数・設定)/WARN>=CRITでコード2,全8パターンで想定通りの終了コード(0/1/2)を確認,合格,evidence/T13_cr3_config_test.txt
-T14,Zabbix Agent サービス稼働およびメトリクス収集,サービスがactiveかつ10050がLISTENでzabbix_agentd -tにて値が返ること,active (running)確認・10050 LISTEN・CPU/ディスクメトリクス取得成功,合格,evidence/T14_zabbix_agent.txt
+T14,Zabbix Agent 導入・起動・ローカルメトリクス取得試験,対象ホスト上でサービスがactiveかつ10050がLISTENでzabbix_agentd -tによるローカルキーテストで値が返ること,active (running)確認・10050 LISTEN・zabbix_agentd -tによるCPU/ディスクのローカルメトリクス取得成功,合格,evidence/T14_zabbix_agent.txt
 T15,nginx ローカルsyslog集約確認,HTTPアクセス時に同一ホスト内の/var/log/nginx_syslog.logへログが出力されること,syslogヘッダー付きで200 OKログがローカル集約されることを確認,合格,evidence/T15_rsyslog_forward.txt
 T16,異常ログ・終了コード記録確認（通知は未実装）,404アクセスログの記録およびディスク閾値超過時のWARNログ・終了コード1が記録されること,syslogに404記録・sudo実行でWARNログ出力と終了コード1を確認,合格,evidence/T16_alarm_detect.txt
 F01,障害:nginxサービス停止,Connection refused検知・systemctlでinactive確認後に起動復旧,Connection refused確認・inactive確認・起動後200OKおよびコード0復帰,合格,evidence/F01_nginx_stop.txt
