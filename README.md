@@ -18,7 +18,7 @@
 | 項目 | 内容 |
 | :--- | :--- |
 | 担当範囲 | 要件整理、パラメータ設計、クラウド環境構築、Linux環境再現、運用スクリプト改修、障害再現・一次切り分け実証、ドキュメント作成（全工程を自主検証として単独実施） |
-| 技術スタック | クラウド: AWS (VPC, Subnet, IGW, RouteTable, EC2, IAM, SecurityGroup, CloudWatch Alarm, SNS)<br>OS/仮想化: Amazon Linux 2023, AlmaLinux 9.x, VMware Workstation<br>ミドルウェア: Nginx, systemd (Service / Timer), firewalld (rich-rule), chronyd, rsyslog, Zabbix Agent<br>スクリプト: Bash (引数バリデーション, 一行パース, エラーハンドリング, ShellCheck検証済み) |
+| 技術スタック | クラウド: AWS (VPC, Subnet, IGW, RouteTable, EC2, IAM, SecurityGroup, CloudWatch Alarm, SNS)<br>OS/仮想化: Amazon Linux 2023, AlmaLinux 9.x, VMware Workstation<br>ミドルウェア: Nginx, systemd (Service / Timer), firewalld (rich-rule), chronyd, rsyslog, Zabbix Agent<br>スクリプト: Bash (引数バリデーション, 一行パース, エラーハンドリング) |
 | 主要な実績 | ・AWSとLinuxローカル環境でのWeb基盤構築と機能対比<br>・systemd timerによる自律的Web死活監視（約1〜2分間隔）の実装<br>・運用スクリプト3本の堅牢化（CR-1: 本文判定・タイムアウト, CR-2: 保存先引数化・事前検証と別手順での復元diff照合 [[T12](evidence/T12_cr2_backup_test.txt)], CR-3: 設定外部化・閾値整合性検証 [[T13](evidence/T13_cr3_config_test.txt)]）<br>・現場頻発障害8パターン（F01〜F08、特に systemd サービスの誤った `PATH` 上書き障害 [[F07](evidence/F07_timer_env_diff.txt)]）の論理的切り分け・復旧実証 |
 | 未検証・今後の課題 | ・CloudWatch AgentによるAWS側のカスタムメトリクス・ログ転送（現在はEC2標準メトリクス監視・SNS通知まで実装）<br>・SSM Session Managerによるブラウザ/CLI接続（現在はEC2へのIAMロール付与まで実施、接続は未検証）<br>・Zabbix Serverによる集中メトリクス収集・アラート連携（現在はAgent単体導入・対象ホスト上でのローカル取得まで検証）<br>・rsyslogによる別ホストへのリモートログ転送（現在は同一サーバー内での `/var/log/nginx_syslog.log` 振り分けまで検証）<br>・ローカル環境におけるアラート自動通知連携（T16はsyslog記録・終了コード1出力での検知確認までとし、通知は未実装）<br>・AWSとオンプレミスのVPN/DirectConnect閉域網接続、およびALB + マルチAZによる高可用性（HA）冗長化 |
 
@@ -362,7 +362,7 @@ EC2インスタンスのCPU使用率（`CPUUtilization`）を監視対象とし�
 | IPv4設定方式 | `manual` | DHCPによる意図しないIP変更を防ぎ静的IP運用を担保するため | `nmcli -f ipv4.method connection show ens160` | ipv4.method: manual |
 | タイムゾーン | `Asia/Tokyo` | アクセスログ・障害ログの記録時刻を日本標準時（JST）に統一しログ照合を容易にするため | `timedatectl` | Time zone: Asia/Tokyo (JST +0900) |
 | 時刻同期（NTP） | `chronyd 有効` | 監視サーバーや作業端末との時刻乖離による障害解析・ログ順序の誤認を防ぐため | `chronyc tracking` | Leap status: Normal / Reference ID 同期確認 |
-| firewalld (不要サービス削除) | `services: なし（cockpit / dhcpv6-client 削除）` | デフォルト開放サービス（Cockpit: 9090/TCP等）を閉塞し許可通信を10.10.1.1/32の22/80のみに厳格化するため | `sudo firewall-cmd --list-all` | services: 空欄・9090番待受なしを確認（[firewalld_baseline.txt](evidence/firewalld_baseline.txt)） |
+| firewalld (不要サービス削除) | `services: なし（cockpit / dhcpv6-client 削除）` | デフォルト開放サービス（Cockpit: 9090/TCP等）を閉塞し許可通信を10.10.1.1/32の22/80のみに厳格化するため | `sudo firewall-cmd --list-all` | 削除適用後にservices空欄・恒久設定でNOT_ENABLED・9090番待受なしを確認（[firewalld_baseline.txt](evidence/firewalld_baseline.txt)） |
 | firewalld (SSH) | `rich-rule: rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept` | 管理用SSHを作業PC（VMnet8）からのアクセスのみに限定するため | `sudo firewall-cmd --list-all / 作業PCからのSSH試行` | 10.10.1.1 から接続成功、別IPや許可前はタイムアウトを確認 |
 | firewalld (HTTP) | `rich-rule: rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept` | Web表示・ヘルスチェック確認を作業PCからのみに限定するため | `sudo firewall-cmd --list-all / 作業PCからのHTTP試行` | ブラウザおよびcurlで200 OK確認（[firewalld_baseline.txt](evidence/firewalld_baseline.txt)） |
 | nginx サービス | `enabled（自動起動有効化）` | サーバー再起動や障害復旧時に手動介入なしでWebサービスを復旧させるため | `systemctl is-enabled nginx / sudo reboot 後の疎通確認` | 再起動後も自動で active (running) になり応答を確認（T05） |
@@ -373,7 +373,7 @@ EC2インスタンスのCPU使用率（`CPUUtilization`）を監視対象とし�
 | disk_check設定ファイル | `/etc/ops/disk_check.conf` | スクリプト本体のハードコードを排除し環境差分を吸収するため | `sudo ls -l /etc/ops/disk_check.conf` | `-rw-------. 1 root root 86 10月 27 15:40 /etc/ops/disk_check.conf` |
 | disk_check.conf権限 | `600 (root:root / sudo実行前提)` | 設定値改ざんや一般ユーザーによる不正閲覧を防止するため（`disk_check.sh` は `sudo` で実行） | `sudo stat -c "%a" /etc/ops/disk_check.conf` | `600` |
 | Zabbixエージェントポート | `10050/TCP` | Zabbix Serverからのポーリング（メトリクス収集）を受け付けるため | `ss -tlpn \| grep 10050` | `LISTEN 0 4096 0.0.0.0:10050 0.0.0.0:*` |
-| Zabbix Server接続許可 | `127.0.0.1（Hostname=portfolio-web）` | ローカル検証および指定監視元からの問い合わせのみに制限するため | `grep -E "^(Server\|Hostname)=" /etc/zabbix/zabbix_agentd.conf` | `Server=127.0.0.1, Hostname=portfolio-web` |
+| Zabbixエージェント設定 | `Server=127.0.0.1（既定値） / Hostname=portfolio-web` | ローカル検証のみに制限（Server/ServerActiveはパッケージ既定値を維持）しホスト識別名を明示するため | `grep -E "^(Server\|Hostname)=" /etc/zabbix/zabbix_agentd.conf` | `Server=127.0.0.1, Hostname=portfolio-web` |
 | rsyslog転送設定 | `/etc/rsyslog.d/50-nginx-forward.conf` | Webアクセスログを同一サーバー内のsyslog基盤（`/var/log/nginx_syslog.log`）へローカル集約・分離記録するため | `sudo ls -l /etc/rsyslog.d/50-nginx-forward.conf` | `-rw-r--r--. 1 root root 345 10月 26 16:37 /etc/rsyslog.d/50-nginx-forward.conf` |
 | nginx syslog出力 | `facility=local6,tag=nginx,severity=info` | アクセスログを通常のファイル保存と並行してローカルsyslog（local6）へ連携するため | `sudo nginx -T \| grep syslog` | `access_log syslog:server=127.0.0.1...` |
 | portfolio-health 実行環境PATH | `Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"` | systemdの既定PATH（`/usr/bin`等を含む）を明示し誤ったPATH上書きによるコマンド未検出（コード127）を防ぐため | `systemctl cat portfolio-health.service` | PATH定義確認 |
@@ -398,7 +398,7 @@ sudo chmod 644 /usr/share/nginx/html/portfolio/health.txt
 ```
 
 ### ② firewalld の不要サービス削除と rich-rule による送信元IP限定制御
-AWS環境のセキュリティグループ（送信元IP制限）の設計思想をOS内部で再現するため、`firewalld` のデフォルトゾーン（`public`）で初期有効化されている不要サービス（`cockpit`（9090/TCP）および `dhcpv6-client`）を削除した上で、作業端末（`10.10.1.1/32`）からの SSH（22/TCP）と HTTP（80/TCP）のみを許可する rich-rule（リッチルール）を投入しました（証跡: [evidence/firewalld_baseline.txt](evidence/firewalld_baseline.txt)）。
+AWS環境のセキュリティグループ（送信元IP制限）の設計思想をOS内部で再現するため、`firewalld` のデフォルトゾーン（`public`）で初期有効化されている不要サービス（`cockpit`（9090/TCP）および `dhcpv6-client`）を削除した上で、作業端末（`10.10.1.1/32`）からの SSH（22/TCP）と HTTP（80/TCP）のみを許可する rich-rule（リッチルール）を投入しました（証跡: [evidence/firewalld_baseline.txt](evidence/firewalld_baseline.txt) ※記録前に削除を適用済みであり、証跡では削除後の `--list-all` で `services:` が空欄であること、および `--remove-service` 再実行時の `NOT_ENABLED` により恒久設定からも除去済みであることを確認しています）。
 
 ```bash
 # デフォルト開放サービス（cockpit / dhcpv6-client）を削除し全送信元開放ポートを閉塞
@@ -456,7 +456,7 @@ WantedBy=timers.target
 ### ① Zabbix Agent によるシステムメトリクス取得
 エンタープライズ環境で標準的に採用される統合監視ソフトウェア「Zabbix」の監視エージェント（Zabbix Agent）を導入し、メトリクス取得環境を検証しました。
 ※本検証ではエージェントプロセスの待受および対象ホスト上でのメトリクス取得までを実証しており、Zabbix Serverによる統合監視・アラーム通知は未構築（今後の拡張課題）としています。
-- 設定ファイル（抜粋）: [config/zabbix_agentd.conf](config/zabbix_agentd.conf)（`/etc/zabbix/zabbix_agentd.conf` にて `Server=127.0.0.1`、`ServerActive=127.0.0.1`、`Hostname=portfolio-web` を設定）
+- 設定ファイル（抜粋）: [config/zabbix_agentd.conf](config/zabbix_agentd.conf)（`/etc/zabbix/zabbix_agentd.conf` にて `Server=127.0.0.1`・`ServerActive=127.0.0.1` はパッケージ既定値を維持し、`Hostname=portfolio-web` を設定）
 - 待受ポート: `10050/TCP` が LISTEN していることを確認。
 - 動作検証: `zabbix_agentd -t system.cpu.load[all,avg1]` および `vfs.fs.size[/,free]` により、CPU負荷（ロードアベレージ）やディスク空き容量のメトリクスが取得できることを実証（[evidence/T14_zabbix_agent.txt](evidence/T14_zabbix_agent.txt)）。
 
@@ -500,7 +500,7 @@ Nginxのアクセスログを通常のファイル出力（`/var/log/nginx/acces
 ## 4.1 変更管理（CR）の運用方針
 実務の運用保守現場では、運用中のスクリプトや設定変更を行う際、「変更要求」「変更前の課題」「影響範囲」「正常系/異常系の検証」「切り戻し（Rollback）手順」を台帳化して安全に適用する変更管理プロセスが求められます。
 本プロジェクトでは、[docs/change_request.md](docs/change_request.md) に基づき、3つの運用ツールの改修（CR-1 〜 CR-3）を実施・検証しました。
-また、改修前のオリジナルスクリプトを [scripts.orig/](scripts.orig/) に保持し、改修後の全スクリプト（`scripts/*.sh`）に対して `bash -n` および `shellcheck` による静的解析を実施して指摘ゼロを確認しています（[evidence/shellcheck_result.txt](evidence/shellcheck_result.txt)）。
+また、改修前のオリジナルスクリプトを [scripts.orig/](scripts.orig/) に保持し、改修後の全スクリプト（`scripts/*.sh`）に対して `bash -n` による構文チェックを実施してエラーがないことを確認しています（また `backup_dir.sh` の `mkdir -p` 判定は `$?` の間接参照ではなく `if ! mkdir -p` による直接判定へ改善済みです）。
 
 ---
 
@@ -712,19 +712,18 @@ graph TD
 
 ## 5.3 【F02】Nginx設定構文エラー（reload失敗）
 * 障害投入:
-  - 事前に設定ファイルを `/etc/nginx/nginx.conf.bak` へ退避した上で、末尾に不正なディレクティブを追記して構文を破壊（[evidence/F02_nginx_syntax_err.txt](evidence/F02_nginx_syntax_err.txt)）：
+  - 正常稼働時のバックアップ（`/etc/nginx/nginx.conf.bak`）が存在する状態で、`/etc/nginx/nginx.conf` の末尾に不正なディレクティブを追記して構文を破壊（[evidence/F02_nginx_syntax_err.txt](evidence/F02_nginx_syntax_err.txt)）：
     ```bash
-    sudo cp -a /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bak
     echo 'invalid_syntax_error_test;' | sudo tee -a /etc/nginx/nginx.conf
     ```
 * 事象・検知:
   - 設定変更後の反映コマンド `sudo systemctl reload nginx` が失敗（`Job for nginx.service failed.` / `Exit Code: 1`）。
 * 調査・事実収集（仮説検証）:
-  - `sudo journalctl -u nginx -n 5 --no-pager` を確認 → `Reload failed` を記録。
+  - `sudo journalctl -u nginx -n 5 --no-pager` を確認 → `Reload failed` を記録（※1行目の `08:33:28` は直前の事前試行時のものであり、本試行の `08:38:35` で85行目のエラーを記録）。
   - 構文テストコマンド `sudo nginx -t` を実行 → `/etc/nginx/nginx.conf:85` において `nginx: [emerg] unknown directive "invalid_syntax_error_test" in /etc/nginx/nginx.conf:85` が発生している行番号と原因を特定。
 * 原因: 設定ファイル編集時のオペレーションミスによる未知のディレクティブ混入（シンタックスエラー）。
 * 復旧手順と確認:
-  - 事前退避していた正常なバックアップファイルから復元：`sudo cp -a /etc/nginx/nginx.conf.bak /etc/nginx/nginx.conf`
+  - 退避してあった正常なバックアップファイル（`/etc/nginx/nginx.conf.bak`）から復元：`sudo cp -a /etc/nginx/nginx.conf.bak /etc/nginx/nginx.conf`
   - `sudo nginx -t` を再実行し、`syntax is ok` および `test is successful`（`Exit Code: 0`）を確認。
   - `sudo systemctl reload nginx` を実行し、`./scripts/health_check.sh http://127.0.0.1/portfolio/health.txt portfolio-ok` にて正常稼働（`Exit Code: 0`）を確認。
 
@@ -851,7 +850,7 @@ graph TD
   - ※本環境では Zabbix Server は未構築のため、**対象ホスト上での手動の定期状態確認（`systemctl status zabbix-agent` および `ss -tlpn | grep 10050`）** を契機として、エージェント停止と待受ポート消失を発見。
 * 調査・事実収集（仮説検証）:
   - 対象ホスト上で `systemctl status zabbix-agent` を確認 → `Active: inactive (dead)` かつ `disabled`（自動起動無効）を確認。
-  - 待受確認を実行 → `Port 10050 is not listening.` となり、10050/TCP の LISTEN が消失している事実を確認。
+  - ポート待受確認を実行 → `Port 10050 is not listening.`（`ss` による10050番待受チェックの判定出力）となり、10050/TCP の LISTEN が消失している事実を確認。
   - `/var/log/zabbix/zabbix_agentd.log` を確認 → `Got signal [signal:15(SIGTERM),...]. Exiting ...`（SIGTERMによる正常停止ログ）が残されており、異常クラッシュではなく停止操作が行われた事実を特定。
   - ※なお、同ログ内の `Unable to connect to [127.0.0.1]:10051 ... Connection refused` は、Zabbix Server（10051/TCP）を未構築の単一ホスト環境において、`zabbix_agentd.conf` の `ServerActive=127.0.0.1` がパッケージ既定値のまま動作していることによる出力である。
 * 原因: 監視エージェントプロセスの停止および自動起動設定（enable）の解除。
@@ -905,7 +904,7 @@ graph TD
   - VPC/サブネット/IGW/ルートテーブルによるネットワーク空間設計、EC2構築、IAMロール設計、CloudWatch（標準メトリクス） / SNSによる監視・通知の構築。
 * オンプレミス（Linux/仮想化）詳細構成管理力
   - VMware NATネットワーク設計、AlmaLinux 9の静的IP・ゲートウェイ・DNS制御、`firewalld` による不要サービス閉塞と rich-rule アクセス制御、時刻同期（chrony）管理。
-* 運用保守自動化およびスクリプト開発・改修力（Bash / ShellCheck検証済み）
+* 運用保守自動化およびスクリプト開発・改修力（Bash）
   - コマンドインジェクション対策（1行パース）、入力値・閾値大小関係バリデーション、タイムアウト設定、異常終了コードの設計、systemd service & timer による定期自動監視の構築。
 * 監視エージェントおよびローカルsyslog集約の構築力
   - Amazon CloudWatch（標準メトリクス / Alarm / SNS通知）、Zabbix Agent（Port 10050待受とローカルメトリクス取得）、rsyslog（`local6` ファシリティ連携）を用いた同一サーバー内でのアクセスログ分離記録の構築。

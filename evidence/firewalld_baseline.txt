@@ -60,7 +60,7 @@ public (active)
 	rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
 Exit Code: 0
 
-=== 作業PCからのHTTP疎通確認 ===
+=== 作業PCからのHTTP疎通確認（※コマンド行は記録漏れのため補記） ===
 PS C:\> curl.exe -I --connect-timeout 3 --max-time 5 http://10.10.1.100/
 HTTP/1.1 200 OK
 Server: nginx/1.20.1

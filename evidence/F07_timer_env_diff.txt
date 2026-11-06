@@ -25,7 +25,7 @@ TriggeredBy: ● portfolio-health.timer
 10月 28 16:58:11 portfolio-web systemd[1]: portfolio-health.service: Failed with result 'exit-code'.
 10月 28 16:58:11 portfolio-web systemd[1]: Failed to start Portfolio local HTTP check.
 
-=== 4. journalctl 詳細ログ（PATH欠落・エラーコード確認） ===
+=== 4. journalctl 詳細ログ（PATH誤設定・エラーコード確認） ===
 10月 28 16:56:13 portfolio-web systemd[1]: Starting Portfolio local HTTP check...
 10月 28 16:56:13 portfolio-web bash[16127]: [OK] 正常稼働: HTTP 200 かつ 本文に 'portfolio-ok' を確認
 10月 28 16:56:13 portfolio-web systemd[1]: portfolio-health.service: Deactivated successfully.

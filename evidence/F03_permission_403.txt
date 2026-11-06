@@ -11,7 +11,7 @@ $ sudo chmod 600 /usr/share/nginx/html/index.html && stat -L -c "%a %U %n" /usr/
 600 root /usr/share/nginx/html/index.html
 Exit Code: 0
 
-=== 2. 症状確認（作業PC：403） ===
+=== 2. 症状確認（作業PC：403 ※コマンド行は記録漏れのため補記、error.logの08:42:30 client:10.10.1.1 HEADと対応） ===
 PS C:\> curl.exe -I http://10.10.1.100/
 HTTP/1.1 403 Forbidden
 Server: nginx/1.20.1
@@ -53,7 +53,7 @@ $ ./scripts/health_check.sh http://10.10.1.100/ Test
 [OK] 正常稼働: HTTP 200 かつ 本文に 'Test' を確認
 Exit Code: 0
 
-=== 5. 復旧確認（作業PC：200） ===
+=== 5. 復旧確認（作業PC：200 ※コマンド行は記録漏れのため補記） ===
 PS C:\> curl.exe -I http://10.10.1.100/
 HTTP/1.1 200 OK
 Server: nginx/1.20.1
