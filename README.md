@@ -37,7 +37,7 @@
   - [2.2 Webサーバーの土台構築とセキュリティ設定（EC2 / IAMロール / SG）](#22-webサーバーの土台構築とセキュリティ設定ec2--iamロール--sg)
   - [2.3 SSH接続とWebサーバー（Nginx）の導入・疎通確認](#23-ssh接続とwebサーバーnginxの導入疎通確認)
   - [2.4 ネットワーク疎通・システムリソースの稼働状態確認](#24-ネットワーク疎通システムリソースの稼働状態確認)
-  - [2.5 運用保守の自動化（シェルスクリプトによる定時バックアップ実装）](#25-運用保守の自動化シェルスクリプトによる定時バックアップ実装)
+  - [2.5 運用保守の自動化（シェルスクリプトによるバックアップ作成とcron登録確認）](#25-運用保守の自動化シェルスクリプトによるバックアップ作成とcron登録確認)
   - [2.6 Amazon CloudWatchによるリソース監視・アラーム通知設定](#26-amazon-cloudwatchによるリソース監視アラーム通知設定)
 - [3. オンプレミス（VMware / AlmaLinux 9）環境の設計・構築・動作検証](#3-オンプレミスvmware--almalinux-9環境の設計構築動作検証)
   - [3.1 ネットワークおよび詳細パラメータ設計](#31-ネットワークおよび詳細パラメータ設計)
@@ -73,11 +73,11 @@
 ## 1.1 プロジェクト概要
 本プロジェクトでは、AWS上における仮想ネットワーク環境（VPC）の設計・構築から、EC2インスタンスによるWebサーバー（Nginx）の起動、保守自動化（バックアップスクリプト・cron定時実行）、およびAmazon CloudWatchによるシステム監視設定までを網羅した「AWSクラウドインフラ環境」を構築しました。
 
-さらに、クラウド環境での設計思想を参考に、ローカル（オンプレミス）の仮想化環境（VMware / AlmaLinux 9）上で主要な通信・アクセス制御・監視構成を構築し、クラウドとオンプレミスLinux環境におけるインフラ構築・運用の比較検証を実施しました。
+さらに、AWSのVPC設計思想とIPアドレス設計を参考に、独立したVMware NAT環境（AlmaLinux 9）で同等の目的を持つネットワーク・アクセス制御・監視構成を作成し、クラウドとオンプレミスLinux環境におけるインフラ構築・運用の比較検証を実施しました。
 
 > [!NOTE]
 > **本検証環境の構成範囲について**
-> 本プロジェクトはAWSとオンプレミスをVPNやDirect Connectで直接接続したハイブリッド閉域網ではなく、それぞれ独立した検証環境です。AWS上のネットワーク設計やセキュリティ思想を参考に、ローカルLinux環境で対応する通信・アクセス制御・運用監視を実装し、機能や運用方法の違いを対比検証しています。
+> 本プロジェクトはAWSとオンプレミスをVPNやDirect Connectで直接接続したハイブリッド閉域網ではなく、それぞれ独立した検証環境です。AWSのVPC設計思想とIPアドレス設計（`10.10.1.0/24`）を参考に、独立したVMware NAT環境で同等の目的を持つネットワーク構成・アクセス制御・運用監視を作成し比較検証しています（なお、将来VPN等で両環境を相互接続する場合は、アドレス範囲の重複によるルーティング不整合を避けるため別セグメントへ分離する設計となります）。
 
 特にオンプレミスLinux環境においては、以下の実務運用フェーズの全ライフサイクルを深く追究しています：
 * 「詳細パラメータ設計」: なぜその設定値にするのかの根拠（設計理由）と確認結果の管理。
@@ -110,7 +110,7 @@ flowchart TD
         subgraph Local_Subnet ["再現サブネット (10.10.1.0/24)"]
             VM["仮想マシン (portfolio-web)<br>AlmaLinux 9 (固定IP: 10.10.1.100)"]
             Local_Nginx["Nginx (Port 80)<br>公開コンテンツ & health.txt"]
-            Firewalld["firewalld (rich-rule)<br>不要サービス削除 & 10.10.1.1/32 のみ 22/80 許可"]
+            Firewalld["firewalld (rich-rule)<br>不要サービス削除 & 外部新規受信は 10.10.1.1/32 の 22/80 のみ許可"]
             SystemdTimer["systemd timer (約1〜2分間隔)<br>portfolio-health.service"]
             CR_Scripts["運用スクリプト群<br>CR-1: health_check.sh<br>CR-2: backup_dir.sh<br>CR-3: disk_check.sh"]
             ZabbixAgent["Zabbix Agent<br>(Port 10050 LISTEN)"]
@@ -143,7 +143,7 @@ AWSクラウド上の各インフラ構成要素と、オンプレミス（VMwar
 | 仮想化ホスト | AWSマネージドインフラ | VMware Workstation (ローカル) | クラウドプロバイダ管理とローカルハイパーバイザの違い |
 | ゲストOS | Amazon Linux 2023 | AlmaLinux 9.x | RedHat系・dnfパッケージ管理の親和性を担保 |
 | ホスト名 | EC2プライベートDNS名 | `portfolio-web` | 複数サーバー運用時の誤操作防止・ログ識別 |
-| 仮想ネットワーク | VPC (Subnet: `10.10.1.0/24`) | VMware NATモード (Subnet: `10.10.1.0/24`) | クラウドVPCのサブネット設計思想を参考にローカル環境で同一CIDRを構成（両環境間の直接ルーティングは未実施） |
+| 仮想ネットワーク | VPC (Subnet: `10.10.1.0/24`) | VMware NATモード (Subnet: `10.10.1.0/24`) | AWSのVPC設計思想とIPアドレス設計を参考に、独立したVMware NAT環境で同等の目的を持つネットワーク構成を作成 |
 | 外部通信経路 | インターネットゲートウェイ (IGW) | 仮想NATルーター (`10.10.1.2`) | 外部インターネット接続およびデフォルトゲートウェイルーティング |
 | ファイアウォール | セキュリティグループ (SG) | `firewalld` (rich-rule設定) | ENI単位のステートフル仮想FW（SG）とLinuxホスト内部のパケットフィルタ（`firewalld`）の仕組みの違いを踏まえ、受信アクセス制御の目的で対比 |
 | リモート管理 | SSH接続（SSM用IAMロール付与まで・接続は未検証） | SSH接続 (ポート22: 送信元IP制限) | 一般ユーザー（`user`）によるSSH運用と、設定ファイル保護（`600 root`）に伴う特権コマンドの `sudo` 分離 |
@@ -161,11 +161,11 @@ AWSクラウド上の各インフラ構成要素と、オンプレミス（VMwar
 | 仮想サーバー | Amazon EC2 (Amazon Linux 2023, t2.micro) | Webコンテンツを配信するWebサーバー基盤として利用 |
 | Webサーバー | Nginx (HTTP Port 80) | 高パフォーマンスで軽量なリバースプロキシ・Webサーバー |
 | アクセス管理 | SSH (Port 22: 送信元IP制限) ※SSM用IAMロール付与済み（接続は未検証） | 最小権限の原則に基づくリモート管理設計 |
-| 保守自動化 | Shell Script (`tar` バックアップ) & `cron` 定時実行 | バックアップ作成の手動実行とcronスケジュール登録 |
-| リソース監視 | Amazon CloudWatch Alarm & Amazon SNS (Email) | CPU過負荷検知アラームとSNSメール通知連携の設定（購読Confirmed・正常時OK状態まで確認） |
+| 保守自動化 | Shell Script (`tar` バックアップ) & `cron` 登録 | cron登録および手動実行によるバックアップ生成確認（定時実行は未検証） |
+| リソース監視 | Amazon CloudWatch Alarm & Amazon SNS (Email) | CloudWatch AlarmとSNSを連携しCPU異常検知時にメール通知する構成を設定（SNSのConfirmed状態とAlarmのOK状態を確認、高負荷によるALARM遷移・メール受信実証は未実施） |
 
 ## 1.5 ローカル仮想化（AlmaLinux 9）での検証目的
-AWS環境の専用OS「Amazon Linux 2023」の比較対象として、パッケージ構成やベースシステムが近い「AlmaLinux 9」を採用。AWS側のネットワーク・セキュリティ設計思想を参考にローカル環境で主要な通信・アクセス制御（固定IPアドレスの割り当て、ホストPCからのSSH接続制限、OS内ファイアウォール制御、Nginx導入）を再現しました。
+AWS環境の専用OS「Amazon Linux 2023」の比較対象として、パッケージ構成やベースシステムが近い「AlmaLinux 9」を採用。AWSのVPC設計思想とIPアドレス設計を参考に、独立したVMware NAT環境で同等の目的を持つネットワーク構成を作成し、固定IPアドレスの割り当て、ホストPCからのSSH接続制限、OS内ファイアウォール制御、およびWebサーバー（Nginx）の導入を比較検証しました。
 
 さらに、パラメータシートに基づく構成管理、systemd timerによる自律運用、Zabbix Agent等の監視エージェント導入、運用ツールの設計改修（Change Request）、そして8種類の障害に対する論理的な一次切り分けを実践・記録することで、現場で自走できるインフラエンジニアとしての実務適性を証明しています。
 
@@ -289,14 +289,15 @@ free -m
 
 ---
 
-## 2.5 運用保守の自動化（シェルスクリプトによる定時バックアップ実装）
-運用の信頼性を高め手動オペレーションを削減するため、Nginxの稼働確認・設定ディレクトリの自動圧縮バックアップ、および定時タスク実行（cron）の仕組みを構築しました。
+## 2.5 運用保守の自動化（シェルスクリプトによるバックアップ作成とcron登録確認）
+運用の信頼性を高め手動オペレーションを削減するため、Nginxの稼働確認・設定ディレクトリの圧縮バックアップスクリプトの作成と手動実行確認、およびcronへのスケジュール登録を行いました。
 
 #### ① ディレクトリ構造の設計と権限管理の適正化
 バックアップ専用フォルダ `/var/backup` を作成。初期作成時のroot所有権による一般ユーザー（`ec2-user`）の書込エラー（Permission denied）を解決するため、適切に所有権を `chown` で変更し、最小権限に即したセキュリティを確保。
 
-#### ② 日付付与型バックアップ自動化スクリプト（`backup.sh`）の作成と実行権限付与
-Nginxの設定ディレクトリ `/etc/nginx` を圧縮アーカイブ化し、バックアップ世代管理のためにファイル名に動的に実行日（`date +%Y%m%d`）を付与するシェルスクリプトを実装。あわせて、作成したスクリプトに実行権限を付与し、Nginxの稼働状態を `/var/log/nginx_monitor.log` へ記録する監視スクリプト（`monitor.sh`）も整備。
+#### ② 日付付与型バックアップスクリプト（`backup.sh`）の作成と実行権限付与
+Nginxの設定ディレクトリ `/etc/nginx` を圧縮アーカイブ化し、ファイル名に実行日（`date +%Y%m%d`）を付与する初期版シェルスクリプトを作成。あわせて、作成したスクリプトに実行権限を付与し、Nginxの稼働状態を `/var/log/nginx_monitor.log` へ記録する監視スクリプト（`monitor.sh`）も整備。
+※下記のコードはEC2上で実際に作成・手動実行した初期版スクリプト（直下の証跡画像 `img/backup_inside.png` と同一内容）です。この初期版では `tar` の終了コード判定を行わずに完了メッセージを表示する構造となっており、この課題をローカル環境の CR-2（4.3節 `backup_dir.sh`）にて終了コード判定付きへ改善しています。
 
 ```bash
 #!/bin/bash
@@ -332,11 +333,10 @@ AWS環境では、稼働監視スクリプト（`monitor.sh`）による稼働�
 ---
 
 ## 2.6 Amazon CloudWatchによるリソース監視・アラーム通知設定
-CloudWatch AlarmとAmazon SNSを連携し、EC2のCPU使用率異常検知時に管理者へメール通知する仕組みを構築しました。
-※本検証ではアラーム設定、SNSサブスクリプションの承認（Confirmed）状態、およびCloudWatchアラームの正常（OK）状態までを確認しています。実際にCPU高負荷を発生させてALARM状態へ遷移させ、通知メールを受信する実証は今後の検証課題としています。
+CloudWatch AlarmとSNSを連携し、CPU使用率の異常検知時にメール通知する構成を設定しました。SNSサブスクリプションのConfirmed状態とCloudWatch AlarmのOK状態を確認しており、CPU高負荷によるALARM遷移およびメール受信の実証は未実施（今後の検証課題）としています。
 
 #### ① CloudWatch アラーム閾値の定義
-EC2インスタンスのCPU使用率（`CPUUtilization`）を監視対象とし、「5分間の集計期間（Period: 5分）における平均CPU使用率が80%を超えた状態が1データポイント（1期間）発生した場合」をアラーム判定基準に指定。
+EC2インスタンスのCPU使用率（`CPUUtilization`）を監視対象とし、`Period: 300秒（5分）`・`EvaluationPeriods: 1` にて「5分間のメトリクス集計値が閾値80%を超えた場合に判定する」条件を指定（5分間の全瞬間で80%を超え続けるという意味ではなく、5分間の集計値に基づく1期間判定）。
 ![監視メトリクスの選択](img/cloudwatch_alert_metrics1.png)
 ![アラーム閾値の設定](img/cloudwatch_alerm.png)
 
@@ -374,12 +374,12 @@ EC2インスタンスのCPU使用率（`CPUUtilization`）を監視対象とし�
 | nginx サービス | `enabled（自動起動有効化）` | サーバー再起動や障害復旧時に手動介入なしでWebサービスを復旧させるため | `systemctl is-enabled nginx / sudo reboot 後の疎通確認` | 再起動後も自動で active (running) になり応答を確認（T05） |
 | ヘルスチェック | `/usr/share/nginx/html/portfolio/health.txt (644権限)` | 運用スクリプトや監視Agentが死活判定を行うための固定レスポンスを確保するため | `curl -i http://127.0.0.1/portfolio/health.txt` | HTTP/1.1 200 OK、本文 portfolio-ok を確認（T03） |
 | portfolio-health.service | `ExecStart=/usr/bin/bash /home/user/portfolio-lab/scripts/health_check.sh http://127.0.0.1/portfolio/health.txt portfolio-ok` | CR-1改修に伴いURLに加え期待本文文字列（portfolio-ok）を引数として渡すため | `systemctl status portfolio-health.service` | code=exited, status=0/SUCCESS でスクリプトが正常終了することを確認 |
-| portfolio-health.timer | `OnUnitActiveSec=1min` | 前回のサービス起動（アクティベート）から約1分後にWebヘルスチェックを次回実行（実行時間やタイマー精度により実際の間隔は約1〜2分で変動） | `systemctl list-timers --all \| grep portfolio` | NEXT/LASTが約1〜2分間隔で更新 |
-| backup_dir.sh (CR-2) | `引数指定（$1:対象 $2:保存先）` | バックアップ保存先を実行時に任意指定可能にし、事前検証で権限不足や対象不在時の異常終了を担保するため | `sudo ./scripts/backup_dir.sh /etc/nginx /home/user/portfolio-lab/backups/nginx` | 正常終了（コード0）および権限不足・対象不在時の異常検知（コード2）を確認 |
+| portfolio-health.timer | `OnBootSec=2min / OnUnitActiveSec=1min` | OnBootSec=2minによりOS起動から2分後に初回実行し、以降はOnUnitActiveSec=1minにより前回のサービス起動から約1分後を基準に定期実行するため | `systemctl list-timers --all \| grep portfolio` | 実測のタイマー表示としてNEXT/LASTが約1〜2分間隔で更新されることを確認 |
+| backup_dir.sh (CR-2) | `引数指定（$1:対象 $2:保存先）` | 保存先を実行時に指定可能にし、実行ユーザーの権限に基づく事前検証で対象不在や書込不可時の異常終了（コード2）を担保するため（特権対象はsudo実行、権限不足試験は一般ユーザー実行で確認） | `sudo ./scripts/backup_dir.sh /etc/nginx /home/user/portfolio-lab/backups/nginx` | 正常終了（コード0）および一般ユーザー実行での書込権限不足・対象不在時の異常検知（コード2）を確認 |
 | disk_check設定ファイル | `/etc/ops/disk_check.conf` | スクリプト本体のハードコードを排除し環境差分を吸収するため | `sudo ls -l /etc/ops/disk_check.conf` | `-rw-------. 1 root root 86 10月 27 15:40 /etc/ops/disk_check.conf` |
 | disk_check.conf権限 | `600 (root:root / sudo実行前提)` | 設定値改ざんや一般ユーザーによる不正閲覧を防止するため（`disk_check.sh` は `sudo` で実行） | `sudo stat -c "%a" /etc/ops/disk_check.conf` | `600` |
-| Zabbixエージェントポート | `10050/TCP` | 将来的なZabbix Server連携を想定しAgentの待受ポート10050/TCPを確認するため（現段階ではServer未構築のため外部開放は行わず対象ホスト上でのAgent起動とローカルメトリクス取得までを検証） | `ss -tlpn \| grep 10050` | `LISTEN 0 4096 0.0.0.0:10050 0.0.0.0:*` |
-| Zabbixエージェント設定 | `Server=127.0.0.1 / ServerActive=127.0.0.1 / Hostname=portfolio-web` | ServerおよびServerActiveは127.0.0.1に設定してローカル検証に限定しホスト識別名を明示するため（実環境の設定値も同一であることを確認） | `grep -E "^(Server\|ServerActive\|Hostname)=" /etc/zabbix/zabbix_agentd.conf` | `Server=127.0.0.1, ServerActive=127.0.0.1, Hostname=portfolio-web` |
+| Zabbixエージェントポート | `10050/TCP` | Zabbix Server未構築のため、現段階では対象ホスト上でのAgent起動・ローカルメトリクス取得を検証対象とする（外部Serverからのポーリングおよびアクティブチェックは未検証） | `ss -tlpn \| grep 10050` | `LISTEN 0 4096 0.0.0.0:10050 0.0.0.0:*` |
+| Zabbixエージェント設定 | `Server=127.0.0.1 / ServerActive=127.0.0.1 / Hostname=portfolio-web` | 設定ファイルにServer=127.0.0.1およびServerActive=127.0.0.1を明示してローカル検証に限定しHostname=portfolio-webを指定するため | `grep -E "^(Server\|ServerActive\|Hostname)=" /etc/zabbix/zabbix_agentd.conf` | `Server=127.0.0.1, ServerActive=127.0.0.1, Hostname=portfolio-web` |
 | rsyslog転送設定 | `/etc/rsyslog.d/50-nginx-forward.conf` | Webアクセスログを同一サーバー内のsyslog基盤（`/var/log/nginx_syslog.log`）へローカル集約・分離記録するため | `sudo ls -l /etc/rsyslog.d/50-nginx-forward.conf` | `-rw-r--r--. 1 root root 345 10月 26 16:37 /etc/rsyslog.d/50-nginx-forward.conf` |
 | nginx syslog出力 | `facility=local6,tag=nginx,severity=info` | アクセスログを通常のファイル保存と並行してローカルsyslog（local6）へ連携するため | `sudo nginx -T \| grep syslog` | `access_log syslog:server=127.0.0.1...` |
 | portfolio-health 実行環境PATH | `Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"` | systemdの既定PATH（`/usr/bin`等を含む）を明示し誤ったPATH上書きによるコマンド未検出（コード127）を防ぐため | `systemctl cat portfolio-health.service` | PATH定義確認 |
@@ -416,7 +416,7 @@ sudo firewall-cmd --permanent --zone=public --add-rich-rule='rule family="ipv4" 
 sudo firewall-cmd --permanent --zone=public --add-rich-rule='rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept'
 sudo firewall-cmd --reload
 ```
-これにより、`sudo firewall-cmd --list-all` 上で `services:` および `ports:` が空欄（`cockpit.socket` も `inactive` で9090番待受なし）となり、外部からの受信（インバウンド）通信について作業端末 `10.10.1.1/32` からのSSH（22/TCP）およびHTTP（80/TCP）のみを許可する構成を実現しています。
+これにより、`sudo firewall-cmd --list-all` 上で `services:` および `ports:` が空欄（`cockpit.socket` も `inactive` で9090番待受なし）となり、外部からの新規受信通信について、作業端末 `10.10.1.1/32` からのSSH（22/TCP）およびHTTP（80/TCP）のみを許可する構成（送信通信や既存の確立済み通信まで一律に遮断するものではない）を実現しています。
 
 ---
 
@@ -453,17 +453,17 @@ Unit=portfolio-health.service
 [Install]
 WantedBy=timers.target
 ```
-このタイマーを有効化することで、システム起動2分後から、`OnUnitActiveSec=1min` により前回のサービス起動（アクティベート）を基準として約1分後に次回実行がスケジュールされます（サービスの実行時間やタイマーの精度によって実際の実行間隔は約1〜2分で変動）。Web停止時にはsystemd journalへ即座に異常ステータスが記録されます（[evidence/T10_timer_repeat.txt](evidence/T10_timer_repeat.txt)）。
+このタイマーを有効化することで、`OnBootSec=2min` によりOS起動から2分後に初回実行し、以降は `OnUnitActiveSec=1min` により前回のサービス起動から約1分後を基準に定期実行します（実際のタイマー表示やジャーナルログの観測結果では約1〜2分間隔で推移）。Web停止時にはsystemd journalへ即座に異常ステータスが記録されます（[evidence/T10_timer_repeat.txt](evidence/T10_timer_repeat.txt)）。
 
 ---
 
 ## 3.4 監視エージェントおよびローカルsyslog集約（Zabbix Agent / rsyslog）
 
 ### ① Zabbix Agent によるローカルメトリクス取得検証
-エンタープライズ環境で標準的に採用される統合監視ソフトウェア「Zabbix」の監視エージェント（Zabbix Agent）を導入し、対象ホスト上でのエージェント起動・ポート待受・ローカルメトリクス取得を検証しました。
-※現段階では Zabbix Server は未構築のため、`firewalld` での 10050/TCP 外部開放は行っておらず、外部 Zabbix Server からのポーリング監視やアラート通知連携は今後の拡張課題としています。
-- 設定ファイル（抜粋）: [config/zabbix_agentd.conf](config/zabbix_agentd.conf)（`/etc/zabbix/zabbix_agentd.conf` にて `Server=127.0.0.1` および `ServerActive=127.0.0.1` を設定してローカル検証に限定し、`Hostname=portfolio-web` を指定）
-- 待受ポート: 将来的な Zabbix Server 連携を想定し、Agent の待受ポート `10050/TCP` が LISTEN していることを確認。
+エンタープライズ環境で標準的に採用される統合監視ソフトウェア「Zabbix」の監視エージェント（Zabbix Agent）を導入しました。
+※Zabbix Server未構築のため、現段階では対象ホスト上でのAgent起動・ローカルメトリクス取得を検証対象とし、外部Serverからのポーリングおよびアクティブチェック（ならびに `firewalld` での 10050/TCP 外部開放）は未検証としています。
+- 設定ファイル（抜粋）: [config/zabbix_agentd.conf](config/zabbix_agentd.conf)（`/etc/zabbix/zabbix_agentd.conf` にて `Server=127.0.0.1`、`ServerActive=127.0.0.1`、`Hostname=portfolio-web` を明示的に設定）
+- 待受ポート: 対象ホスト上で Agent の `10050/TCP` が LISTEN していることを確認。
 - 動作検証: 対象ホスト上で `zabbix_agentd -t system.cpu.load[all,avg1]` および `vfs.fs.size[/,free]` を実行し、CPU負荷（ロードアベレージ）やディスク空き容量のローカルメトリクス取得が正常に動作することを実証（[evidence/T14_zabbix_agent.txt](evidence/T14_zabbix_agent.txt)）。
 
 ### ② Nginx アクセスログの同一サーバー内 rsyslog 振り分け（ローカルsyslog集約）
@@ -571,9 +571,16 @@ Nginxのアクセスログを通常のファイル出力（`/var/log/nginx/acces
 
 * 対象ファイル: [scripts/backup_dir.sh](scripts/backup_dir.sh)（改修前: [scripts.orig/backup_dir.sh](scripts.orig/backup_dir.sh) / 差分全文: [evidence/CR2.diff](evidence/CR2.diff)）
 * 課題と変更理由:
-  - 【課題】バックアップ保存先が固定されており、保存先ディレクトリの作成失敗・書き込み権限不足や対象不在時に無理に処理が進んで空の破損アーカイブが作られる危険性があった。
-  - 【解決】第1引数に対象ディレクトリ、第2引数に保存先ディレクトリを指定可能に変更。アーカイブ作成前に「対象の存在確認」「保存先ディレクトリの作成成否判定（`if ! mkdir -p`）」「保存先への書き込み権限確認（`[ ! -w "$DEST_DIR" ]`）」を行う事前バリデーションを実装。また、絶対パスではなく相対パス（`-C` オプション）で `tar.gz` 圧縮を行い展開時の上書き事故を防止。
-  - ※スクリプト本体の実装範囲は事前バリデーションと `tar.gz` アーカイブ作成までとし、展開（復元）および `diff -r` による差分照合は別手順の検証として実施。
+  - 【課題】バックアップ保存先が固定されており、対象不在や保存先ディレクトリの作成失敗・書き込み権限不足の際に、`tar` 実行前に処理を中断する事前チェックがなかった。
+  - 【解決】第1引数に対象ディレクトリ、第2引数に保存先ディレクトリを指定可能に変更。`tar` 実行前に「対象の存在確認」「保存先ディレクトリの作成成否判定（`if ! mkdir -p`）」「保存先への書き込み権限確認（`[ ! -w "$DEST_DIR" ]`）」を行う事前バリデーションを実装し、不備がある場合は `tar` を起動せず終了コード 2 で安全に中断する。また、絶対パスではなく相対パス（`-C` オプション）で `tar.gz` 圧縮を行い展開時の上書き事故を防止。
+  - 【実行ユーザーと権限チェックの前提（重要）】
+    - スクリプト内の `[ ! -w "$DEST_DIR" ]` は**実行ユーザーの権限**に基づいて書き込み可否を判定する（root実行時は通常の権限ビットによらず書き込み可能と判定される）。そのため、以下の通り実行方式を区分している：
+      1. **一般ユーザーでバックアップする場合**：一般ユーザーで読み取り可能な対象と書き込み可能な保存先を指定する。
+      2. **root権限でバックアップする場合**：`/etc/nginx` 等の特権ディレクトリを対象とする場合は `sudo` を使用し、rootとして書き込み可能な保存先を指定する。
+      3. **書き込み権限不足の試験（T12パターン4）**：一般ユーザー（`sudo` なし）で実行し、root所有 `755` の `/srv/backup_ro` に対して終了コード 2 で中断することを確認する。
+  - 【実装範囲と今後の改善課題】
+    - スクリプト本体の実装範囲は事前バリデーションと `tar.gz` アーカイブ作成（および `tar` 終了コード判定）までとし、展開（復元）および `diff -r` 照合は別手順の検証として実施。
+    - なお、3引数以上渡された場合の余剰引数エラー判定（`[ "$#" -ne 2 ]`）、および `tar` 圧縮途中の異常中断時に作成途中の不完全ファイルを自動削除する仕組み（一時ファイル `.tmp` 作成後の `mv` や `trap` による削除）は今後の拡張課題としている。
 
 * AWS側の初期スクリプト（`backup.sh`）からの改善対比:
 
@@ -633,6 +640,11 @@ Nginxのアクセスログを通常のファイル出力（`/var/log/nginx/acces
   - 【課題】監視対象マウントポイントや警告閾値がスクリプト内にハードコードされており、環境ごとの閾値変更のたびにスクリプト本体を修正する運用リスクがあった。また、`source` や `.` による外部ファイル読み込みは悪意あるコードの任意実行（コマンドインジェクション）につながる危険があった。
   - 【解決】設定ファイル `/etc/ops/disk_check.conf` へ外部化（`TARGET_MOUNT=/`, `WARN_THRESHOLD=80`, `CRIT_THRESHOLD=90`）し、パーミッションを `600`（root所有）に制限。このため、`disk_check.sh` は `sudo`（root権限）で実行する運用に統一し、一般ユーザーが `sudo` なしで実行した場合は読み取り権限チェック（`[ ! -r "$CONF_FILE" ]`）で明確にエラー終了（終了コード 2）させる。
   - 設定値の読み込みは `while IFS='=' read -r key value` でキーと値を1行ずつ安全に解析し、設定ファイル側・引数側の双方に対して整数チェック、範囲チェック（1〜100）、および警告閾値と重大閾値の大小関係チェック（`WARN < CRIT` を満たさない場合は終了コード 2）を実装。
+  - 【位置引数による一時上書き仕様】
+    - 第1引数（`$1`）：監視対象マウントポイント（省略時は設定ファイルの `TARGET_MOUNT`）
+    - 第2引数（`$2`）：WARN閾値（省略時は設定ファイルの `WARN_THRESHOLD`）
+    - 第3引数（`$3`）：CRIT閾値（省略時は設定ファイルの `CRIT_THRESHOLD`）
+    - ※T13では設定ファイル読み込みおよび `$1`・`$2` の上書き（ならびに `$2 >= CRIT` の検知）を試験しており、`$3` によるCRIT閾値の個別上書き試験は今後の拡張項目としている。
 
 * 主な変更箇所の抜粋（全文は [evidence/CR3.diff](evidence/CR3.diff) を参照）:
 ```diff
@@ -795,8 +807,8 @@ graph TD
 * 事象・検知:
   - `curl -sS -o /dev/null -w "%{http_code}\n" --max-time 5 https://www.google.com` を実行すると、`curl: (28) Resolving timed out after 5000 milliseconds`（`Exit Code: 28`）となり外部ドメインへの通信が失敗。
 * 調査・事実収集（仮説検証）:
-  - 外部とのIP通信断を切り分けるため、外部DNSのIP直打ち `ping -c 2 8.8.8.8` を実行 → パケット損失0%（`Exit Code: 0`）。外部IPアドレス `8.8.8.8` へのICMP疎通が成立しているため、少なくともIPレイヤーの外部通信経路は確保されていると判断。
-  - `dig +time=2 +tries=1 www.google.com` を実行 → `connection timed out; no servers could be reached`（`Exit Code: 9`）を確認し、名前解決レイヤーの障害に特定。
+  - `ping -c 2 8.8.8.8` を実行 → パケット損失0%（`Exit Code: 0`）。`8.8.8.8` へのICMP疎通が成立しているため、少なくとも外部IPアドレスへの通信経路は確保されていることを確認。
+  - `dig +time=2 +tries=1 www.google.com` を実行 → `connection timed out; no servers could be reached`（`Exit Code: 9`）を確認。DNS名前解決のみが失敗していることから、DNS設定に原因があると判断した。
 * 原因: `/etc/resolv.conf` における未到達DNSサーバー（`192.0.2.1`）の設定による名前解決タイムアウト。
 * 復旧手順と確認:
   - 退避していた設定ファイルから復元：`sudo cp -a /root/resolv.conf.bak /etc/resolv.conf`（`nameserver 10.10.1.2` / `8.8.8.8` の復帰を確認）。
@@ -869,7 +881,7 @@ graph TD
   - 対象ホスト上で `systemctl status zabbix-agent` を確認 → `Active: inactive (dead)` かつ `disabled`（自動起動無効）を確認。
   - ポート待受確認を実行 → `Port 10050 is not listening.`（`ss` による10050番待受チェックの判定出力）となり、10050/TCP の LISTEN が消失している事実を確認。
   - `/var/log/zabbix/zabbix_agentd.log` を確認 → `Got signal [signal:15(SIGTERM),...]. Exiting ...`（SIGTERMによる正常停止ログ）が残されており、異常クラッシュではなく停止操作が行われた事実を特定。
-  - ※なお、同ログ内の `Unable to connect to [127.0.0.1]:10051 ... Connection refused` は、`ServerActive=127.0.0.1` を本検証用のローカル限定設定（パッケージ初期値と同一）として指定している一方、Zabbix Serverを構築していないため接続先の 10051/TCP が存在せず記録されるものである。これはエージェント停止による異常ではなく、統合監視サーバー未構築に伴う想定された状態である。
+  - ※なお、同ログ内の `Unable to connect to [127.0.0.1]:10051 ... Connection refused` は、`ServerActive=127.0.0.1` が設定ファイルに明示されており、接続先のZabbix Serverが未構築のため 10051/TCP への接続が拒否されることによる記録である。これはエージェント停止による異常ではなく、統合監視サーバー未構築に伴う想定された状態である。
 * 原因: 監視エージェントプロセスの停止および自動起動設定（enable）の解除。
 * 復旧手順と確認:
   - 即時起動および自動起動有効化：`sudo systemctl enable --now zabbix-agent`
@@ -909,22 +921,22 @@ graph TD
 特に以下の設計・運用アプローチは、現場での実務を強く意識したものとなっています：
 1. セキュリティと最小権限・実行権限の明確な分離:
    - AWSでのセキュリティグループ（マイIP制限）とSSM用IAMロール設計、オンプレミスでの `firewalld` 不要サービス（`cockpit` 等）削除と rich-rule による `10.10.1.1/32` 限定通信。
-   - 権限要件に応じた実行ユーザーの使い分け：HTTP死活監視（`health_check.sh` / `portfolio-health.service`）は非特権の一般ユーザー（`user`）で実行する一方、設定ファイル `/etc/ops/disk_check.conf` を `600 root:root` で保護した `disk_check.sh` や `/etc/nginx` を対象とする `backup_dir.sh` は `sudo`（root権限）で実行する設計とし、一般ユーザーが誤って `sudo` なしで `disk_check.sh` を実行した際は読み取り不可（終了コード 2）として検知。
+   - 権限要件に応じた実行ユーザーの使い分け：HTTP死活監視（`health_check.sh` / `portfolio-health.service`）は非特権の一般ユーザー（`user`）で実行する一方、設定ファイル `/etc/ops/disk_check.conf` を `600 root:root` で保護した `disk_check.sh` は `sudo`（root権限）で実行する設計とし、一般ユーザーが誤って `sudo` なしで `disk_check.sh` を実行した際は読み取り不可（終了コード 2）として検知。また、`backup_dir.sh` は対象に応じた実行方式（特権ディレクトリ `/etc/nginx` 対象時は `sudo` 実行、一般ユーザー運用時および書き込み権限不足試験時は一般ユーザー実行）を明確に定義。
 2. 安全な変更管理（Change Request）プロセスの実践:
-   - スクリプト改修時における「事前バリデーション（`mkdir` 失敗と `-w` 書込不可の分離、設定ファイル・引数双方の型・大小関係 `WARN < CRIT` 検証）」「タイムアウト考慮」「終了コード厳密化」「別手順での復元後diff差分照合」「`scripts.orig/` と `CR*.diff` によるロールバック手順の担保」。
+   - スクリプト改修時における「事前バリデーション（`mkdir` 失敗と実行ユーザー権限に基づく `-w` 書込不可の分離、設定ファイル・引数双方の型・大小関係 `WARN < CRIT` 検証）」「タイムアウト考慮」「終了コード厳密化」「別手順での復元後diff差分照合」「`scripts.orig/` と `CR*.diff` によるロールバック手順の担保」。
 3. 論理的な障害切り分けアプローチ:
    - 当てずっぽうな再起動ではなく、OS・ネットワーク・ファイル権限（シンボリックリンク実体）・ミドルウェア・systemdユニット環境変数に至る各レイヤーで事実（コマンド結果・終了コード）を収集し、仮説を立てて検証するランブックの確立。
 
 ## 6.2 証明される習得スキル
 
 * クラウド（AWS）インフラ設計・構築力
-  - VPC/サブネット/IGW/ルートテーブルによるネットワーク空間設計、EC2構築、IAMロール設計、CloudWatch（標準メトリクス） / SNSによる監視・通知の構築。
+  - VPC/サブネット/IGW/ルートテーブルによるネットワーク空間設計、EC2構築、IAMロール設計、CloudWatch AlarmとSNSを連携した監視通知設定（Confirmed状態およびAlarmのOK状態確認）。
 * オンプレミス（Linux/仮想化）詳細構成管理力
-  - VMware NATネットワーク設計、AlmaLinux 9の静的IP・ゲートウェイ・DNS制御、`firewalld` による不要サービス閉塞と rich-rule アクセス制御、時刻同期（chrony）管理。
+  - VMware NATネットワーク設計、AlmaLinux 9の静的IP・ゲートウェイ・DNS制御、`firewalld` による不要サービス閉塞と外部新規受信通信の rich-rule アクセス制御、時刻同期（chrony）管理。
 * 運用保守自動化およびスクリプト開発・改修力（Bash）
   - コマンドインジェクション対策（1行パース）、入力値・閾値大小関係バリデーション、タイムアウト設定、異常終了コードの設計、systemd service & timer による定期自動監視の構築。
 * 監視エージェントおよびローカルsyslog集約の構築力
-  - Amazon CloudWatch（標準メトリクス / Alarm / SNS通知）、Zabbix Agent（Port 10050待受とローカルメトリクス取得）、rsyslog（`local6` ファシリティ連携）を用いた同一サーバー内でのアクセスログ分離記録の構築。
+  - Amazon CloudWatch（標準メトリクス / Alarm / SNS連携設定）、Zabbix Agent（対象ホスト上での10050待受とローカルメトリクス取得）、rsyslog（`local6` ファシリティ連携）を用いた同一サーバー内でのアクセスログ分離記録の構築。
 * 現場標準の障害一次切り分け・トラブルシューティング力
   - プロセス停止、設定構文エラー、シンボリックリンク実体の権限不備（403/namei）、ディスク枯渇（du/find）、DNS解決不備（ping vs dig/curl）、ファイアウォール遮断、systemdユニットのPATH上書き障害（コード127→2）、エージェント停止など、現場で直面する多角的なトラブルに対する論理的解決力。
 
