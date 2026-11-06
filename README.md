@@ -477,7 +477,7 @@ Nginxのアクセスログを通常のファイル出力（`/var/log/nginx/acces
 ---
 
 ## 3.5 基本・統合動作試験結果（T01〜T16）
-構築したオンプレミス環境の健全性を客観的に証明するため、全16項目（19行）のテストケースを策定し、現行版スクリプトを用いて正常系・異常系・統合動作の検証を実施しました。すべての試験で想定通りの結果を確認しています（[docs/test_results.csv](docs/test_results.csv)）。
+構築したオンプレミス環境の健全性を客観的に証明するため、全16項目（19行）のテストケースを策定し、現行版スクリプトを用いて正常系・異常系・統合動作の検証を実施しました。すべての試験で想定通りの結果を確認しています（[docs/test_results.csv](docs/test_results.csv)）。なお、試験結果CSV（[docs/test_results.csv](docs/test_results.csv)）には、下記 `T01〜T16` の19行に加え、第5章（Runbook）で実施した障害試験 `F01〜F08` の8行（計27行のデータ行）も収録しています。
 
 | No | 確認項目 | 期待する結果 | 実際の結果 | 判定 | 証跡エビデンス |
 | :---: | :--- | :--- | :--- | :---: | :--- |
@@ -488,10 +488,10 @@ Nginxのアクセスログを通常のファイル出力（`/var/log/nginx/acces
 | T05 | 再起動後の自動起動 | reboot後もNginx自動起動、応答維持 | active、uptime直後、200 OK | 合格 | [evidence/T05_reboot_check.txt](evidence/T05_reboot_check.txt) |
 | T06-1 | Web監視 正常系 | `health_check.sh`（現行版）の終了コード 0 | HTTP 200・本文一致で終了コード 0 を確認 | 合格 | [evidence/T06_health_ok.txt](evidence/T06_health_ok.txt) |
 | T06-2 | Web監視 HTTP異常 | HTTP 404等の異常時に終了コード 1 | 404指定で終了コード 1 を確認 | 合格 | [evidence/T06_health_404.txt](evidence/T06_health_404.txt) |
-| T06-3 | Web監視 接続失敗 | 接続拒否・タイムアウトで終了コード 2 | 未使用ポート1番指定（curlコード7）で終了コード 2 確認 | 合格 | [evidence/T06_health_connfail.txt](evidence/T06_health_connfail.txt) |
+| T06-3 | Web監視 接続失敗 | 接続拒否時に終了コード 2 | 未使用ポート1番指定（curlコード7）で終了コード 2 確認 | 合格 | [evidence/T06_health_connfail.txt](evidence/T06_health_connfail.txt) |
 | T07-1 | ディスク監視 正常 | `sudo ./scripts/disk_check.sh` の終了コード 0 | 設定ファイル閾値80%で終了コード 0 を確認 | 合格 | [evidence/T07_diskok.txt](evidence/T07_diskok.txt) |
 | T07-2 | ディスク監視 警告 | 閾値超過時に終了コード 1 | `sudo` 実行・引数閾値1%指定で終了コード 1 を確認 | 合格 | [evidence/T07_disk_warn.txt](evidence/T07_disk_warn.txt) |
-| T07-3 | ディスク監視 失敗 | 対象不在・閾値不正で終了コード 2 | `sudo` 実行・存在しないパス指定で終了コード 2 確認 | 合格 | [evidence/T07_disk_fail.txt](evidence/T07_disk_fail.txt) |
+| T07-3 | ディスク監視 失敗 | 対象パス不在時に終了コード 2 | `sudo` 実行・存在しないパス指定で終了コード 2 確認 | 合格 | [evidence/T07_disk_fail.txt](evidence/T07_disk_fail.txt) |
 | T08 / T09 | バックアップ作成と復元照合 | 引数2つでバックアップ作成後、別フォルダへ展開し `diff` 一致 | 設定とhtmlを展開し `diff --no-dereference` で一致（SAME・コード0） | 合格 | [evidence/T08_backup_exec.txt](evidence/T08_backup_exec.txt) [evidence/T09_backup_exec.txt](evidence/T09_backup_exec.txt) |
 | T10 | Web監視 定期実行 | タイマーにより定期実行＆停止ログ記録 | 約1〜2分間隔実行、停止時status=2記録 | 合格 | [evidence/T10_timer_repeat.txt](evidence/T10_timer_repeat.txt) |
 | T11 | CR-1 改修試験 | 5パターン(0/1/1/2/2)が正しく返る | 全5パターン想定通りの終了コード確認 | 合格 | [evidence/T11_cr1_test.txt](evidence/T11_cr1_test.txt) |

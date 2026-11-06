@@ -6,10 +6,10 @@ T04,外部HTTP応答,作業PCのブラウザ/curlから同じ応答,"200 OK, por
 T05,再起動後も疎通・自動起動が成立,reboot後もnginx自動起動、応答維持,active、uptime直後、200 OK確認,合格,evidence/T05_reboot_check.txt
 T06-1,Web監視 正常,health_check.sh（現行版）の終了コード 0,HTTP 200・本文一致で終了コード 0 を確認,合格,evidence/T06_health_ok.txt
 T06-2,Web監視 HTTP異常,HTTP 404等の異常時に終了コード 1,404 指定で終了コード 1 を確認,合格,evidence/T06_health_404.txt
-T06-3,Web監視 接続失敗,接続拒否・タイムアウトで終了コード 2,ポート1番指定（curlコード7）で終了コード 2 を確認,合格,evidence/T06_health_connfail.txt
+T06-3,Web監視 接続失敗,接続拒否時に終了コード 2,ポート1番指定（curlコード7）で終了コード 2 を確認,合格,evidence/T06_health_connfail.txt
 T07-1,ディスク監視 正常,sudo ./scripts/disk_check.sh の終了コード 0,設定ファイル閾値80%で終了コード 0 を確認,合格,evidence/T07_diskok.txt
 T07-2,ディスク監視 閾値警告,終了コード 1,sudo実行・引数閾値1%で終了コード 1 を確認,合格,evidence/T07_disk_warn.txt
-T07-3,ディスク監視 取得失敗,対象なし・閾値不正で終了コード 2,sudo実行・存在しないパス指定で終了コード 2 を確認,合格,evidence/T07_disk_fail.txt
+T07-3,ディスク監視 取得失敗,対象パス不在時に終了コード 2,sudo実行・存在しないパス指定で終了コード 2 を確認,合格,evidence/T07_disk_fail.txt
 T08 / T09,バックアップ作成と別手順での復元照合,引数2つでアーカイブ生成後、別フォルダへ展開し diff で一致,nginx設定とhtmlを展開しdiff --no-dereferenceで差分なし(SAME・コード0)を確認,合格,evidence/T08_backup_exec.txt evidence/T09_backup_exec.txt
 T10,Web監視定期実行（timer）,タイマーによりスクリプトが継続実行されWeb停止時に失敗ログが記録されること,"約1〜2分間隔で定期実行され、nginx停止時にstatus=2で失敗ログを記録",合格,evidence/T10_timer_repeat.txt
 T11,CR-1 health_check 改修試験（5パターン）,正常(0)・本文不一致(1)・404(1)・接続拒否(2)・タイムアウト(2) が正しく返ること,5パターンすべて想定通りの終了コード（0/1/1/2/2）を確認,合格,evidence/T11_cr1_test.txt
