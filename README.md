@@ -20,7 +20,7 @@
 | 担当範囲 | 要件整理、パラメータ設計、クラウド環境構築、Linux環境再現、運用スクリプト改修、障害再現・一次切り分け実証、ドキュメント作成（全工程を自主検証として単独実施） |
 | 技術スタック | クラウド: AWS (VPC, Subnet, IGW, RouteTable, EC2, IAM, SecurityGroup, CloudWatch Alarm, SNS)<br>OS/仮想化: Amazon Linux 2023, AlmaLinux 9.x, VMware Workstation<br>ミドルウェア: Nginx, systemd (Service / Timer), firewalld (rich-rule), chronyd, rsyslog, Zabbix Agent<br>スクリプト: Bash (引数バリデーション, 一行パース, エラーハンドリング) |
 | 主要な実績 | ・AWSとLinuxローカル環境でのWeb基盤構築と機能対比<br>・systemd timerによる自律的Web死活監視（約1〜2分間隔）の実装<br>・運用スクリプト3本の堅牢化（CR-1: 本文判定・タイムアウト, CR-2: 保存先引数化・事前検証と別手順での復元diff照合 [[T12](evidence/T12_cr2_backup_test.txt)], CR-3: 設定外部化・閾値整合性検証 [[T13](evidence/T13_cr3_config_test.txt)]）<br>・現場頻発障害8パターン（F01〜F08、特に systemd サービスの誤った `PATH` 上書き障害 [[F07](evidence/F07_timer_env_diff.txt)]）の論理的切り分け・復旧実証 |
-| 未検証・今後の課題 | ・CloudWatch AgentによるAWS側のカスタムメトリクス・ログ転送、およびCPU負荷投入によるALARM遷移・SNSメール受信の実証（現在はEC2標準メトリクスのアラーム設定・SNS購読Confirmed・正常時OK状態の確認まで実施）<br>・AWS環境におけるcron定刻実行の事後ログ検証（AWS側は初期スクリプトの手動実行とcrontab登録確認までとし、エラー処理・事前検証・復元diff照合はローカル環境CR-2にて実装・検証）<br>・SSM Session Managerによるブラウザ/CLI接続（現在はEC2へのIAMロール付与まで実施、接続は未検証）<br>・Zabbix Serverによる集中メトリクス収集・アラート連携（現在はAgent単体導入・対象ホスト上でのローカル取得まで検証）<br>・rsyslogによる別ホストへのリモートログ転送（現在は同一サーバー内での `/var/log/nginx_syslog.log` 振り分けまで検証）<br>・ローカル環境におけるアラート自動通知連携（T16はsyslog記録・終了コード1出力での検知確認までとし、通知は未実装）<br>・AWSとオンプレミスのVPN/DirectConnect閉域網接続、およびALB + マルチAZによる高可用性（HA）冗長化 |
+| 未検証・今後の課題 | ・CloudWatch AgentによるAWS側のカスタムメトリクス・ログ転送、およびCPU負荷投入によるALARM遷移・SNSメール受信の実証（現在はEC2標準メトリクスのアラーム設定・SNS購読Confirmed・正常時OK状態の確認まで実施）<br>・AWS環境におけるcron定刻実行の事後ログ検証（AWS側は初期スクリプトの手動実行とcrontab登録確認までとし、エラー処理・事前検証・復元diff照合はローカル環境CR-2にて実装・検証）<br>・SSM Session Managerによるブラウザ/CLI接続（現在はEC2へのIAMロール付与まで実施、接続は未検証）<br>・Zabbix Serverによる集中メトリクス収集・アラート連携（現在はAgent単体導入・対象ホスト上でのローカル取得まで検証）<br>・rsyslogによる別ホストへのリモートログ転送（現在は同一サーバー内での `/var/log/nginx_syslog.log` 振り分けまで検証）<br>・ローカル環境におけるアラート自動通知連携（T16は404アクセスのsyslog記録、および `disk_check.sh` のWARNメッセージ出力・終了コード1による検知確認までとし、通知は未実装）<br>・AWSとオンプレミスのVPN/DirectConnect閉域網接続、およびALB + マルチAZによる高可用性（HA）冗長化 |
 
 ---
 
@@ -297,7 +297,7 @@ free -m
 
 #### ② 日付付与型バックアップスクリプト（`backup.sh`）の作成と実行権限付与
 Nginxの設定ディレクトリ `/etc/nginx` を圧縮アーカイブ化し、ファイル名に実行日（`date +%Y%m%d`）を付与する初期版シェルスクリプトを作成。あわせて、作成したスクリプトに実行権限を付与し、Nginxの稼働状態を `/var/log/nginx_monitor.log` へ記録する監視スクリプト（`monitor.sh`）も整備。
-※下記のコードはEC2上で実際に作成・手動実行した初期版スクリプト（直下の証跡画像 `img/backup_inside.png` と同一内容）です。この初期版では `tar` の終了コード判定を行わずに完了メッセージを表示する構造となっており、この課題をローカル環境の CR-2（4.3節 `backup_dir.sh`）にて終了コード判定付きへ改善しています。
+※下記のコードはEC2上で実際に作成・手動実行した初期版スクリプト（直下の証跡画像 `img/backup_inside.png` と同一内容）です。この初期版では `tar` の終了コード判定を行わずに完了メッセージを表示する構造となっており、この課題をローカル環境の CR-2（4.3節 `backup_dir.sh`）にて終了コード判定付きへ改善しています（また、`monitor.sh` もAWS環境上で作成・実行確認［`img/monitor_log.png`］した初期スクリプトのためリポジトリには単体ファイルを収録しておらず、ローカル環境の `scripts/health_check.sh`［CR-1］および `systemd timer` として発展実装しています）。
 
 ```bash
 #!/bin/bash
@@ -499,7 +499,7 @@ Nginxのアクセスログを通常のファイル出力（`/var/log/nginx/acces
 | T13 | CR-3 改修試験 | 設定分離・引数上書き・入力検証（文字列/WARN>=CRIT/権限） | 全8パターン想定通りの終了コード(0/1/2)確認 | 合格 | [evidence/T13_cr3_config_test.txt](evidence/T13_cr3_config_test.txt) |
 | T14 | Zabbix Agent ローカル取得 | 対象ホスト上でactive、10050 LISTEN、`zabbix_agentd -t` で値取得 | 10050 LISTEN、CPU/diskローカル取得確認 | 合格 | [evidence/T14_zabbix_agent.txt](evidence/T14_zabbix_agent.txt) |
 | T15 | ローカルsyslog集約 | HTTPアクセス時に `/var/log/nginx_syslog.log` へ記録 | syslogヘッダー付き200ログのローカル集約を確認 | 合格 | [evidence/T15_rsyslog_forward.txt](evidence/T15_rsyslog_forward.txt) |
-| T16 | 異常ログ・終了コード確認 | 404ログ記録・ディスク超過WARNログとコード1出力（通知は未実装） | syslog404記録・`sudo` 実行でWARNログと終了コード1を確認 | 合格 | [evidence/T16_alarm_detect.txt](evidence/T16_alarm_detect.txt) |
+| T16 | 異常ログ・WARN出力確認 | 404のsyslog記録・ディスク超過時のWARNメッセージ出力と終了コード1（通知は未実装） | 404のsyslog記録、および `sudo` 実行でのWARN標準エラー出力・終了コード1を確認 | 合格 | [evidence/T16_alarm_detect.txt](evidence/T16_alarm_detect.txt) |
 
 ---
 
@@ -574,7 +574,7 @@ Nginxのアクセスログを通常のファイル出力（`/var/log/nginx/acces
 * 対象ファイル: [scripts/backup_dir.sh](scripts/backup_dir.sh)（改修前: [scripts.orig/backup_dir.sh](scripts.orig/backup_dir.sh) / 差分全文: [evidence/CR2.diff](evidence/CR2.diff)）
 * 課題と変更理由:
   - 【課題】バックアップ保存先が固定されており、対象不在や保存先ディレクトリの作成失敗・書き込み権限不足の際に、`tar` 実行前に処理を中断する事前チェックがなかった。
-  - 【解決】第1引数に対象ディレクトリ、第2引数に保存先ディレクトリを指定可能に変更。`tar` 実行前に「対象の存在確認」「保存先ディレクトリの作成成否判定（`if ! mkdir -p`）」「保存先への書き込み権限確認（`[ ! -w "$DEST_DIR" ]`）」を行う事前バリデーションを実装し、不備がある場合は `tar` を起動せず終了コード 2 で安全に中断する。また、絶対パスではなく相対パス（`-C` オプション）で `tar.gz` 圧縮を行い展開時の上書き事故を防止。
+  - 【解決】第1引数に対象ディレクトリ、第2引数に保存先ディレクトリを指定可能に変更。`tar` 実行前に「対象の存在確認」「保存先ディレクトリの作成成否判定（`if ! mkdir -p`）」「保存先への書き込み権限確認（`[ ! -w "$DEST_DIR" ]`）」を行う事前バリデーションを実装し、不備がある場合は `tar` を起動せず終了コード 2 で安全に中断する。また、絶対パスを含まない相対パス（`-C` オプション）でアーカイブ内の格納先を管理し、任意の展開先ディレクトリ配下への復元を容易にする構成とした。
   - 【実行ユーザーと権限チェックの前提（重要）】
     - スクリプト内の `[ ! -w "$DEST_DIR" ]` は**実行ユーザーの権限**に基づいて書き込み可否を判定する（root実行時は通常の権限ビットによらず書き込み可能と判定される）。そのため、以下の通り実行方式を区分している：
       1. **一般ユーザーでバックアップする場合**：一般ユーザーで読み取り可能な対象と書き込み可能な保存先を指定する。
@@ -646,7 +646,7 @@ Nginxのアクセスログを通常のファイル出力（`/var/log/nginx/acces
     - 第1引数（`$1`）：監視対象マウントポイント（省略時は設定ファイルの `TARGET_MOUNT`）
     - 第2引数（`$2`）：WARN閾値（省略時は設定ファイルの `WARN_THRESHOLD`）
     - 第3引数（`$3`）：CRIT閾値（省略時は設定ファイルの `CRIT_THRESHOLD`）
-    - ※T13では設定ファイル読み込みおよび `$1`・`$2` の上書き（ならびに `$2 >= CRIT` の検知）を試験しており、`$3` によるCRIT閾値の個別上書き試験は今後の拡張項目としている。
+    - ※T13では設定ファイル読み込みと `$2`（WARN閾値）の上書き（ならびに `$2 >= CRIT` の検知。なお `$1` は設定値と同じ `/` を指定）を試験し、`T07-3` では `$1` に存在しないパス（`/not-existing`）を指定した異常系を確認している。設定値（`/`）とは異なる実在マウントポイント（`/tmp` 等）を `$1` に指定した正常系上書き試験、および `$3` によるCRIT閾値の個別上書き試験は未実施（今後の拡張項目）としている。
 
 * 主な変更箇所の抜粋（全文は [evidence/CR3.diff](evidence/CR3.diff) を参照）:
 ```diff
@@ -722,7 +722,7 @@ graph TD
     
     L3 -- "基盤正常" --> L4{"【レイヤー4: 運用基盤・監視エージェント層】<br>systemdユニット設定・エージェントは正常か？"}
     
-    L4 -- "systemdサービス起動時のみ失敗" --> F07["【F07】systemdサービスPATH障害<br>手動OK vs サービス失敗(status=2/127)<br>→ 誤ったPATH=/dummy上書きを修正復旧"]
+    L4 -- "systemdサービス起動時のみ失敗" --> F07["【F07】systemdサービスPATH障害<br>手動OK vs サービス失敗(curl未検出:127 → スクリプト終了コード:2 / systemd表示:status=2)<br>→ 誤ったPATH=/dummy上書きを修正復旧"]
     L4 -- "エージェント停止・10050消失" --> F08["【F08】Zabbix Agent停止障害<br>対象ホスト上でinactive/10050不在/SIGTERM確認<br>→ systemctl enable --now 復旧"]
 ```
 

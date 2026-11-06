@@ -17,7 +17,7 @@ T12,CR-2 backup_dir 改修・別手順での復元diff照合,保存先引数化�
 T13,"CR-3 disk_check 改修・設定分離・バリデーション（8パターン）",設定読込(0)・引数上書き(1)・不在/読込不可/文字列(引数・設定)/WARN>=CRITでコード2,全8パターンで想定通りの終了コード(0/1/2)を確認,合格,evidence/T13_cr3_config_test.txt
 T14,Zabbix Agent 導入・起動・ローカルメトリクス取得試験,対象ホスト上でサービスがactiveかつ10050がLISTENでzabbix_agentd -tによるローカルキーテストで値が返ること,active (running)確認・10050 LISTEN・zabbix_agentd -tによるCPU/ディスクのローカルメトリクス取得成功,合格,evidence/T14_zabbix_agent.txt
 T15,nginx ローカルsyslog集約確認,HTTPアクセス時に同一ホスト内の/var/log/nginx_syslog.logへログが出力されること,syslogヘッダー付きで200 OKログがローカル集約されることを確認,合格,evidence/T15_rsyslog_forward.txt
-T16,異常ログ・終了コード記録確認（通知は未実装）,404アクセスログの記録およびディスク閾値超過時のWARNログ・終了コード1が記録されること,syslogに404記録・sudo実行でWARNログ出力と終了コード1を確認,合格,evidence/T16_alarm_detect.txt
+T16,異常ログ・WARN出力確認（通知は未実装）,404アクセスログがsyslogへ記録されディスク閾値超過時にWARNメッセージ出力・終了コード1となること,404のsyslog記録、およびsudo実行でのWARN標準エラー出力・終了コード1を確認,合格,evidence/T16_alarm_detect.txt
 F01,障害:nginxサービス停止,Connection refused検知・systemctlでinactive確認後に起動復旧,Connection refused確認・inactive確認・起動後200OKおよびコード0復帰,合格,evidence/F01_nginx_stop.txt
 F02,障害:設定構文エラー,不正ディレクティブ投入でリロード失敗・nginx -tで行特定・bak復元後リロード成功,85行目unknown directive特定・bak復元・nginx -t成功・リロード後コード0,合格,evidence/F02_nginx_syntax_err.txt
 F03,障害:公開ファイル権限403,シンボリックリンク実体の600化で403検知・nameiで特定・644修正で復旧,作業PCと内部双方で403検知・nameiで実体600特定・chmod 644後に200OK復帰,合格,evidence/F03_permission_403.txt
