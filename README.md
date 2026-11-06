@@ -187,7 +187,7 @@ AWS環境の専用OS「Amazon Linux 2023」の比較対象として、パッケ�
 ![サブネット詳細](img/VPC_subnet.png)
 
 #### ③ インターネットゲートウェイ（IGW）の接続
-VPC内部から外部インターネットと双方向通信を行うためのIGWを作成し、VPCにアタッチ。
+VPCとインターネット間の通信経路を確保するため、IGWを作成してVPCにアタッチ。
 ![インターネットゲートウェイアタッチ](img/IGW.png)
 
 #### ④ ルートテーブルの構成とサブネットの関連付け
@@ -380,7 +380,7 @@ EC2インスタンスのCPU使用率（`CPUUtilization`）を監視対象とし�
 | disk_check.conf権限 | `600 (root:root / sudo実行前提)` | 設定値改ざんや一般ユーザーによる不正閲覧を防止するため（`disk_check.sh` は `sudo` で実行） | `sudo stat -c "%a" /etc/ops/disk_check.conf` | `600` |
 | Zabbixエージェントポート | `10050/TCP（0.0.0.0待受・firewalld非開放）` | Zabbix Server未構築のため対象ホスト上でのAgent起動・ローカルメトリクス取得を検証対象とする（ListenIP未指定のため0.0.0.0でLISTENするが、firewalldでの10050番非開放とServer=127.0.0.1により外部接続を遮断。待受自体を絞る場合はListenIP=127.0.0.1を指定） | `ss -tlpn \| grep 10050` | `LISTEN 0 4096 0.0.0.0:10050 0.0.0.0:*` |
 | Zabbixエージェント設定 | `Server=127.0.0.1 / ServerActive=127.0.0.1 / Hostname=portfolio-web` | 設定ファイルにServer=127.0.0.1およびServerActive=127.0.0.1を明示してローカル検証に限定しHostname=portfolio-webを指定するため | `grep -E "^(Server\|ServerActive\|Hostname)=" /etc/zabbix/zabbix_agentd.conf` | `Server=127.0.0.1, ServerActive=127.0.0.1, Hostname=portfolio-web` |
-| rsyslog転送設定 | `/etc/rsyslog.d/50-nginx-forward.conf` | Webアクセスログを同一サーバー内のsyslog基盤（`/var/log/nginx_syslog.log`）へローカル集約・分離記録するため | `sudo ls -l /etc/rsyslog.d/50-nginx-forward.conf` | `-rw-r--r--. 1 root root 345 10月 26 16:37 /etc/rsyslog.d/50-nginx-forward.conf` |
+| rsyslogローカル振り分け設定 | `/etc/rsyslog.d/50-nginx-forward.conf` | Webアクセスログを同一サーバー内のsyslog基盤（`/var/log/nginx_syslog.log`）へローカル集約・分離記録するため | `sudo ls -l /etc/rsyslog.d/50-nginx-forward.conf` | `-rw-r--r--. 1 root root 345 10月 26 16:37 /etc/rsyslog.d/50-nginx-forward.conf` |
 | nginx syslog出力 | `facility=local6,tag=nginx,severity=info` | アクセスログを通常のファイル保存と並行してローカルsyslog（local6）へ連携するため | `sudo nginx -T \| grep syslog` | `access_log syslog:server=127.0.0.1...` |
 | portfolio-health 実行環境PATH | `Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"` | systemdの既定PATH（`/usr/bin`等を含む）を明示し誤ったPATH上書きによるコマンド未検出（コード127）を防ぐため | `systemctl cat portfolio-health.service` | PATH定義確認 |
 | Zabbix Agent サービス | `enabled (自動起動有効化)` | OS再起動時にもエージェント停止を発生させないため | `systemctl is-enabled zabbix-agent` | enabled確認 |
