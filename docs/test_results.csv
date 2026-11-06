@@ -11,7 +11,7 @@ T07-1,ディスク監視 正常,sudo ./scripts/disk_check.sh の終了コード 
 T07-2,ディスク監視 閾値警告,終了コード 1,sudo実行・引数閾値1%で終了コード 1 を確認,合格,evidence/T07_disk_warn.txt
 T07-3,ディスク監視 取得失敗,対象パス不在時に終了コード 2,sudo実行・存在しないパス指定で終了コード 2 を確認,合格,evidence/T07_disk_fail.txt
 T08 / T09,バックアップ作成と別手順での復元照合,引数2つでアーカイブ生成後、別フォルダへ展開し diff で一致,nginx設定とhtmlを展開しdiff --no-dereferenceで差分なし(SAME・コード0)を確認,合格,evidence/T08_backup_exec.txt evidence/T09_backup_exec.txt
-T10,Web監視定期実行（timer）,タイマーによりスクリプトが継続実行されWeb停止時に失敗ログが記録されること,"約1〜2分間隔で定期実行され、nginx停止時にstatus=2で失敗ログを記録",合格,evidence/T10_timer_repeat.txt
+T10,Web監視定期実行（timer）,OS起動後約2分で初回実行し以降は約1分間隔で定期実行されWeb停止時に失敗ログが記録されること,"定期実行（AccuracySec既定値により実測約1〜2分間隔）およびnginx停止時のstatus=2失敗ログ記録を確認",合格,evidence/T10_timer_repeat.txt
 T11,CR-1 health_check 改修試験（5パターン）,正常(0)・本文不一致(1)・404(1)・接続拒否(2)・タイムアウト(2) が正しく返ること,5パターンすべて想定通りの終了コード（0/1/1/2/2）を確認,合格,evidence/T11_cr1_test.txt
 T12,CR-2 backup_dir 改修・別手順での復元diff照合,保存先引数化・対象不在/作成不可/書込不可(-w)でコード2・展開後diff一致・改変検知,全6パターン（mkdir失敗と-w権限不足の双方を含む）で想定通りの終了コード(0/2/1)を確認,合格,evidence/T12_cr2_backup_test.txt
 T13,"CR-3 disk_check 改修・設定分離・バリデーション（8パターン）",設定読込(0)・引数上書き(1)・不在/読込不可/文字列(引数・設定)/WARN>=CRITでコード2,全8パターンで想定通りの終了コード(0/1/2)を確認,合格,evidence/T13_cr3_config_test.txt
