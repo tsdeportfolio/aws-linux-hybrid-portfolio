@@ -1,38 +1,66 @@
-=== [障害再現 & 検知] ===
-$ sudo chmod 600 /usr/share/nginx/html/index.html
-$ curl.exe -I http://10.10.1.100
+=== F03 公開ファイル権限不備 ===
+実行日時: 2026-11-06T08:42:00+09:00 / ホスト: portfolio-web / 実行ユーザー: user
+
+$ ls -l /usr/share/nginx/html/index.html && readlink -f /usr/share/nginx/html/index.html
+lrwxrwxrwx. 1 root root 25  9月 11 18:10 /usr/share/nginx/html/index.html -> ../../testpage/index.html
+/usr/share/testpage/index.html
+Exit Code: 0
+
+=== 1. 障害投入（chmod はリンク先の実体に効く） ===
+$ sudo chmod 600 /usr/share/nginx/html/index.html && stat -L -c "%a %U %n" /usr/share/nginx/html/index.html
+600 root /usr/share/nginx/html/index.html
+Exit Code: 0
+
+=== 2. 症状確認（作業PC：403） ===
+PS C:\> curl.exe -I http://10.10.1.100/
 HTTP/1.1 403 Forbidden
 Server: nginx/1.20.1
+Date: Thu, 05 Nov 2026 23:42:30 GMT
+Content-Type: text/html
+Content-Length: 153
+Connection: keep-alive
 
-$ ./scripts/health_check.sh http://10.10.1.100 "Test"
+=== 3. サーバー側確認 ===
+$ ./scripts/health_check.sh http://10.10.1.100/ Test
 [WARN] 異常検知: HTTP ステータスコード 403
-$ echo $?
-1
+Exit Code: 1
 
-=== [調査・原因特定] ===
-$ sudo tail -n 10 /var/log/nginx/error.log
-[error] 12016#12016: *21 open() "/usr/share/nginx/html/index.html" failed (13: Permission denied), client: 10.10.1.100, server: _, request: "GET / HTTP/1.1", host: "10.10.1.100"
+$ sudo tail -n 2 /var/log/nginx/error.log
+2026/11/06 08:42:30 [error] 29821#29821: *1507 open() "/usr/share/nginx/html/index.html" failed (13: Permission denied), client: 10.10.1.1, server: _, request: "HEAD / HTTP/1.1", host: "10.10.1.100"
+2026/11/06 08:43:30 [error] 29821#29821: *1508 open() "/usr/share/nginx/html/index.html" failed (13: Permission denied), client: 10.10.1.100, server: _, request: "GET / HTTP/1.1", host: "10.10.1.100"
+Exit Code: 0
 
-$ namei -l /usr/share/nginx//html/index.html
-f: /usr/share/nginx//html/index.html
+$ namei -l /usr/share/nginx/html/index.html
+f: /usr/share/nginx/html/index.html
 dr-xr-xr-x root root /
 drwxr-xr-x root root usr
 drwxr-xr-x root root share
 drwxr-xr-x root root nginx
 drwxr-xr-x root root html
 lrwxrwxrwx root root index.html -> ../../testpage/index.html
-drwxr-xr-x root root ..
-drwxr-xr-x root root ..
-drwxr-xr-x root root testpage
--rw------- root root index.html
+drwxr-xr-x root root   ..
+drwxr-xr-x root root   ..
+drwxr-xr-x root root   testpage
+-rw------- root root   index.html
+Exit Code: 0
 
-=== [復旧・復旧確認] ===
-$ sudo chmod 644 /usr/share/nginx/html/index.html
-$ namei -l /usr/share/nginx//html/index.html
-...
--rw-r--r-- root root index.html
+=== 4. 復旧 ===
+$ sudo chmod 644 /usr/share/nginx/html/index.html && stat -L -c "%a %U %n" /usr/share/nginx/html/index.html
+644 root /usr/share/nginx/html/index.html
+Exit Code: 0
 
-$ ./scripts/health_check.sh http://10.10.1.100 "Test"
+$ ./scripts/health_check.sh http://10.10.1.100/ Test
 [OK] 正常稼働: HTTP 200 かつ 本文に 'Test' を確認
-$ echo $?
-0
+Exit Code: 0
+
+=== 5. 復旧確認（作業PC：200） ===
+PS C:\> curl.exe -I http://10.10.1.100/
+HTTP/1.1 200 OK
+Server: nginx/1.20.1
+Date: Thu, 05 Nov 2026 23:43:57 GMT
+Content-Type: text/html
+Content-Length: 5760
+Last-Modified: Mon, 24 Mar 2025 16:15:24 GMT
+Connection: keep-alive
+ETag: "67e1851c-1680"
+Accept-Ranges: bytes

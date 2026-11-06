@@ -25,8 +25,7 @@ fi
 
 # 3. 保存先ディレクトリの作成と書込権限チェック
 if [ ! -d "$DEST_DIR" ]; then
-    mkdir -p "$DEST_DIR" 2>/dev/null
-    if [ $? -ne 0 ]; then
+    if ! mkdir -p "$DEST_DIR" 2>/dev/null; then
         echo "[FAIL] 保存先ディレクトリを作成できません: $DEST_DIR" >&2
         exit 2
     fi

@@ -1,5 +1,18 @@
-$ sudo ./scripts/backup_dir.sh /etc/nginx
-2026-10-22T14:34:38+09:00 OK archive=/home/user/portfolio-lab/backups/nginx/backup-20261022-143438-3787.tar.gz
-$ mkdir -p /tmp/restore_t08 && sudo tar -xzf /home/user/portfolio-lab/backups/nginx/backup-20261022-143438-3787.tar.gz -C /tmp/restore_t08
-$ sudo diff -r /etc/nginx /tmp/restore_t08/etc/nginx && echo SAME
+=== T08 バックアップと復元（/etc/nginx） ===
+実行日時: 2026-11-05T17:41:06+09:00 / ホスト: portfolio-web / 実行ユーザー: user
+
+$ sha256sum scripts/backup_dir.sh
+023b110bfa53083fc291a03a8ee31a3ae7413f8b11e57f3005a5fe13d4801311  scripts/backup_dir.sh
+Exit Code: 0
+
+$ sudo ./scripts/backup_dir.sh /etc/nginx /home/user/portfolio-lab/backups/nginx
+[OK] バックアップ正常完了: /home/user/portfolio-lab/backups/nginx/nginx_backup_20261105_174106.tar.gz
+Exit Code: 0
+
+$ rm -rf /tmp/restore_t08 && mkdir -p /tmp/restore_t08 && sudo tar -xzf backups/nginx/nginx_backup_20261105_174106.tar.gz -C /tmp/restore_t08
+Exit Code: 0
+
+$ sudo diff -r --no-dereference /etc/nginx /tmp/restore_t08/nginx && echo SAME
 SAME
+Exit Code: 0
+

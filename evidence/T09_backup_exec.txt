@@ -1,5 +1,14 @@
-$ sudo ./scripts/backup_dir.sh /usr/share/nginx/html
-2026-10-22T15:02:49+09:00 OK archive=/home/user/portfolio-lab/backups/html/backup-20261022-150249-3942.tar.gz
-$ mkdir -p /tmp/restore_t09 && sudo tar -xzf /home/user/portfolio-lab/backups/html/backup-20261022-150249-3942.tar.gz -C /tmp/restore_t09
-$ sudo diff -r /usr/share/nginx/html /tmp/restore_t09/usr/share/nginx/html && echo SAME
+=== T09 バックアップと復元（/usr/share/nginx/html） ===
+実行日時: 2026-11-05T17:41:06+09:00 / ホスト: portfolio-web / 実行ユーザー: user
+
+$ sudo ./scripts/backup_dir.sh /usr/share/nginx/html /home/user/portfolio-lab/backups/html
+[OK] バックアップ正常完了: /home/user/portfolio-lab/backups/html/html_backup_20261105_174106.tar.gz
+Exit Code: 0
+
+$ rm -rf /tmp/restore_t09 && mkdir -p /tmp/restore_t09 && sudo tar -xzf backups/html/html_backup_20261105_174106.tar.gz -C /tmp/restore_t09
+Exit Code: 0
+
+$ sudo diff -r --no-dereference /usr/share/nginx/html /tmp/restore_t09/html && echo SAME
 SAME
+Exit Code: 0
+

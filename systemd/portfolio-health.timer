@@ -1,5 +1,5 @@
 [Unit]
-Description=Run portfolio HTTP check every minute
+Description=Run portfolio HTTP check (about 1-2 min interval)
 
 [Timer]
 OnBootSec=2min

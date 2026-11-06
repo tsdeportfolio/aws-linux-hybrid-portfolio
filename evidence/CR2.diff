@@ -1,6 +1,6 @@
---- scripts.orig/backup_dir.sh	2026-10-21 15:25:11.000000000 +0900
-+++ scripts/backup_dir.sh	2026-10-23 15:13:47.076480643 +0900
-@@ -1,13 +1,56 @@
+--- scripts.orig/backup_dir.sh	2026-11-05 16:49:22
++++ scripts/backup_dir.sh	2026-11-05 16:50:47
+@@ -1,13 +1,55 @@
 -#!/usr/bin/env bash
 -# Usage: backup_dir.sh SOURCE_DIRECTORY [SUBDIR_NAME]
 -set -u
@@ -38,8 +38,7 @@
 +
 +# 3. 保存先ディレクトリの作成と書込権限チェック
 +if [ ! -d "$DEST_DIR" ]; then
-+    mkdir -p "$DEST_DIR" 2>/dev/null
-+    if [ $? -ne 0 ]; then
++    if ! mkdir -p "$DEST_DIR" 2>/dev/null; then
 +        echo "[FAIL] 保存先ディレクトリを作成できません: $DEST_DIR" >&2
 +        exit 2
 +    fi

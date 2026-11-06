@@ -1,1 +1,11 @@
-2026-10-22T13:56:38+09:00 OK target=/ used=37% threshold=80%
+=== T07-1 ディスク監視 正常（設定ファイルの閾値80%、期待: 0） ===
+実行日時: 2026-11-05T17:40:34+09:00 / ホスト: portfolio-web / 実行ユーザー: user
+
+$ sha256sum scripts/disk_check.sh
+b02c36c0c6fc8eed4d18a6a67a76579fa67924869f83b7744d5614585a244b7e  scripts/disk_check.sh
+Exit Code: 0
+
+$ sudo ./scripts/disk_check.sh
+2026-11-05T17:40:41+09:00 OK target=/ used=37% threshold=80%
+Exit Code: 0
+

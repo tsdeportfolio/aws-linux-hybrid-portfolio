@@ -1,2 +1,7 @@
-curl: (7) Failed to connect to 127.0.1 port 1: 接続を拒否されました
-2026-10-22T12:16:00+09:00 UNKNOWN url=http://127.0.1:1/ curl_rc=7
+=== T06-3 Web監視 接続失敗（期待: 2） ===
+実行日時: 2026-11-05T17:39:58+09:00 / ホスト: portfolio-web / 実行ユーザー: user
+
+$ ./scripts/health_check.sh http://127.0.0.1:1/ portfolio-ok
+[FAIL] 通信失敗: 接続拒否またはタイムアウト (curl終了コード: 7)
+Exit Code: 2
+

@@ -1,1 +1,7 @@
-2026-10-22T12:13:24+09:00 NG url=http://127.0.0.1/portfolio/not-found http=404
+=== T06-2 Web監視 HTTP異常 404（期待: 1） ===
+実行日時: 2026-11-05T17:39:58+09:00 / ホスト: portfolio-web / 実行ユーザー: user
+
+$ ./scripts/health_check.sh http://127.0.0.1/portfolio/not-found portfolio-ok
+[WARN] 異常検知: HTTP ステータスコード 404
+Exit Code: 1
+

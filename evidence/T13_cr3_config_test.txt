@@ -1,24 +1,64 @@
-============================================================
-T13: CR-3 (disk_check.sh) 設定ファイル分離・バリデーション試験
-実行日時: 2026-11-02 14:33:35
-============================================================
+=== T13 CR-3 設定ファイル分離・バリデーション試験 ===
+実行日時: 2026-11-05T17:42:47+09:00 / ホスト: portfolio-web / 実行ユーザー: user
 
-[Test 1: 設定ファイル (/etc/ops/disk_check.conf) の正常読み込み]
-期待値: 終了コード 0 (正常)
-2026-11-02T14:33:35+09:00 OK target=/ used=37% threshold=80%
+$ sha256sum scripts/disk_check.sh
+b02c36c0c6fc8eed4d18a6a67a76579fa67924869f83b7744d5614585a244b7e  scripts/disk_check.sh
 Exit Code: 0
 
-[Test 2: 引数による閾値上書き (1%指定で警告検知)]
-期待値: 終了コード 1 (警告検知)
-2026-11-02T14:33:35+09:00 WARN target=/ used=37% threshold=1%
+$ sudo ls -l /etc/ops/disk_check.conf && sudo cat /etc/ops/disk_check.conf
+-rw-------. 1 root root 86 10月 27 15:40 /etc/ops/disk_check.conf
+# disk_check.sh 設定ファイル
+TARGET_MOUNT=/
+WARN_THRESHOLD=80
+CRIT_THRESHOLD=90
+Exit Code: 0
+
+--- Test1: 設定ファイルの正常読み込み（期待: 0） ---
+$ sudo ./scripts/disk_check.sh
+2026-11-05T17:42:47+09:00 OK target=/ used=37% threshold=80%
+Exit Code: 0
+
+--- Test2: 引数で閾値上書き 1%（期待: 1） ---
+$ sudo ./scripts/disk_check.sh / 1
+2026-11-05T17:42:47+09:00 WARN target=/ used=37% threshold=1%
 Exit Code: 1
 
-[Test 3: 設定ファイル不在時の異常検知]
-期待値: 終了コード 2 (判定不能・設定不在)
+--- Test3: 設定ファイル不在（期待: 2） ---
+$ sudo mv /etc/ops/disk_check.conf /etc/ops/disk_check.conf.bak && sudo ./scripts/disk_check.sh; rc=$?; sudo mv /etc/ops/disk_check.conf.bak /etc/ops/disk_check.conf; exit $rc
 [UNKNOWN] Config file not found: /etc/ops/disk_check.conf
 Exit Code: 2
 
-[Test 4: 不正な閾値パラメータ (文字列) 指定時のバリデーション]
-期待値: 終了コード 2 (入力値不正)
+--- Test4: 引数の閾値が文字列（期待: 2 / invalid_threshold） ---
+$ sudo ./scripts/disk_check.sh / abc
 UNKNOWN reason=invalid_threshold
 Exit Code: 2
+
+--- Test5: 設定ファイルの閾値が文字列（期待: 2 / Thresholds must be integers） ---
+$ sudo cp -a /etc/ops/disk_check.conf /etc/ops/disk_check.conf.bak && sudo sed -i 's/^WARN_THRESHOLD=.*/WARN_THRESHOLD=abc/' /etc/ops/disk_check.conf && sudo ./scripts/disk_check.sh; rc=$?; sudo mv /etc/ops/disk_check.conf.bak /etc/ops/disk_check.conf; exit $rc
+[UNKNOWN] Thresholds must be integers.
+Exit Code: 2
+
+--- Test6: WARN>=CRIT（引数 WARN=95 / 設定 CRIT=90、期待: 2） ---
+$ sudo ./scripts/disk_check.sh / 95
+UNKNOWN reason=warn_not_less_than_crit
+Exit Code: 2
+
+--- Test7: WARN>=CRIT（設定ファイル WARN=95、期待: 2） ---
+$ sudo cp -a /etc/ops/disk_check.conf /etc/ops/disk_check.conf.bak && sudo sed -i 's/^WARN_THRESHOLD=.*/WARN_THRESHOLD=95/' /etc/ops/disk_check.conf && sudo ./scripts/disk_check.sh; rc=$?; sudo mv /etc/ops/disk_check.conf.bak /etc/ops/disk_check.conf; exit $rc
+UNKNOWN reason=warn_not_less_than_crit
+Exit Code: 2
+
+--- Test8: sudoなし実行（設定ファイル600のため読めない、期待: 2） ---
+$ ./scripts/disk_check.sh
+[UNKNOWN] Config file not readable: /etc/ops/disk_check.conf (run with sudo)
+Exit Code: 2
+
+--- 後片付け確認 ---
+$ sudo ls -l /etc/ops/disk_check.conf && sudo cat /etc/ops/disk_check.conf
+-rw-------. 1 root root 86 10月 27 15:40 /etc/ops/disk_check.conf
+# disk_check.sh 設定ファイル
+TARGET_MOUNT=/
+WARN_THRESHOLD=80
+CRIT_THRESHOLD=90
+Exit Code: 0
+

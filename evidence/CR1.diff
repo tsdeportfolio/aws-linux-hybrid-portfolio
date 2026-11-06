@@ -1,5 +1,5 @@
---- scripts.orig/health_check.sh	2026-10-21 15:25:11.000000000 +0900
-+++ scripts/health_check.sh	2026-10-23 13:43:45.186007368 +0900
+--- scripts.orig/health_check.sh	2026-11-05 16:49:22
++++ scripts/health_check.sh	2026-11-02 17:17:28
 @@ -1,17 +1,57 @@
  #!/usr/bin/env bash
 -# Usage: health_check.sh [URL]
@@ -54,16 +54,16 @@
 +if [ "$HTTP_STATUS" != "200" ]; then
 +    echo "[WARN] 異常検知: HTTP ステータスコード $HTTP_STATUS" >&2
 +    rm -f "$TEMP_RESPONSE"
-+    exit 1
-+fi
+     exit 1
+ fi
+-printf '%s OK url=%s http=%s\n' "$now" "$url" "$code"
 +
 +# 5. 三次判定: 期待する本文文字列が含まれているか
 +if ! grep -qF "$EXPECTED_BODY" "$TEMP_RESPONSE"; then
 +    echo "[WARN] 異常検知: HTTP 200 ですが期待文字列 '$EXPECTED_BODY' が本文に含まれません" >&2
 +    rm -f "$TEMP_RESPONSE"
-     exit 1
- fi
--printf '%s OK url=%s http=%s\n' "$now" "$url" "$code"
++    exit 1
++fi
 +
 +# 正常終了
 +echo "[OK] 正常稼働: HTTP 200 かつ 本文に '$EXPECTED_BODY' を確認"

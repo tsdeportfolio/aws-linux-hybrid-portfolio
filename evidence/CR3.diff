@@ -1,6 +1,6 @@
---- scripts.orig/disk_check.sh	2026-10-21 15:25:11.000000000 +0900
-+++ scripts/disk_check.sh	2026-10-26 15:29:53.505826004 +0900
-@@ -1,14 +1,51 @@
+--- scripts.orig/disk_check.sh	2026-11-05 16:49:22
++++ scripts/disk_check.sh	2026-11-05 16:49:31
+@@ -1,17 +1,65 @@
  #!/usr/bin/env bash
 -# Usage: disk_check.sh [TARGET_PATH] [THRESHOLD_PERCENT]
 +# disk_check.sh(CR-3適応版)
@@ -14,6 +14,12 @@
 +if [ ! -f "$CONF_FILE" ]; then
 +    echo "[UNKNOWN] Config file not found: $CONF_FILE" >&2
 +    exit 2 # 判定不能
++fi
++
++# 【バリデーション1-2】設定ファイルを読めるか（600 root のため sudo 実行が前提）
++if [ ! -r "$CONF_FILE" ]; then
++    echo "[UNKNOWN] Config file not readable: $CONF_FILE (run with sudo)" >&2
++    exit 2
 +fi
 +
 +# 【安全な読み込み】余計なコマンド実行を許さず、KEY=VALUE形式のみ取り込む
@@ -57,7 +63,15 @@
      echo 'UNKNOWN reason=threshold_out_of_range' >&2
      exit 2
  fi
-@@ -23,6 +60,11 @@
++# 警告閾値は重大閾値より小さくなければならない（設定ファイル・引数どちらの指定でも検査）
++if (( threshold >= crit_threshold )); then
++    echo 'UNKNOWN reason=warn_not_less_than_crit' >&2
++    exit 2
++fi
+ result=$(LC_ALL=C df -P -- "$target")
+ rc=$?
+ if (( rc != 0 )); then
+@@ -24,6 +72,11 @@
      exit 2
  fi
  now=$(date -Iseconds)

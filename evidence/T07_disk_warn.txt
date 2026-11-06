@@ -1,1 +1,7 @@
-2026-10-22T13:57:38+09:00 WARN target=/ used=37% threshold=1%
+=== T07-2 ディスク監視 警告（引数で閾値1%、期待: 1） ===
+実行日時: 2026-11-05T17:40:41+09:00 / ホスト: portfolio-web / 実行ユーザー: user
+
+$ sudo ./scripts/disk_check.sh / 1
+2026-11-05T17:40:41+09:00 WARN target=/ used=37% threshold=1%
+Exit Code: 1
+

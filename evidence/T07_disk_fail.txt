@@ -1,2 +1,8 @@
+=== T07-3 ディスク監視 失敗（存在しないパス、期待: 2） ===
+実行日時: 2026-11-05T17:40:41+09:00 / ホスト: portfolio-web / 実行ユーザー: user
+
+$ sudo ./scripts/disk_check.sh /not-existing
 df: /not-existing: No such file or directory
 UNKNOWN reason=df_failed
+Exit Code: 2
+

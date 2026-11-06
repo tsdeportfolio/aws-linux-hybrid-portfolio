@@ -1,91 +1,78 @@
-============================================================
-障害対応記録: F06 firewalldによる外部通信遮断
-実施日時: 2026/10/28（2026/11/02 再検証）
-============================================================
+=== F06 firewalld による外部通信遮断 ===
+実行日時: 2026-11-05T17:47:06+09:00 / ホスト: portfolio-web / 実行ユーザー: user
 
-1. 障害検知・事象
-作業PC（10.10.1.1）からのHTTPアクセスがタイムアウトする。
-
-[作業PCからのcurl実行結果]
-PS C:\> curl.exe -I --connect-timeout 3 --max-time 5 http://10.10.1.100/
-curl: (28) Connection timed out after 3011 milliseconds
-
-------------------------------------------------------------
-2. 一次切り分け（事実収集）
-サーバー内部からのHTTPアクセスは成功するため、Webサービス自体は健全であり、
-OS境界のパケットフィルタ（firewalld）によるDROPを疑う。
-
-[VMwareローカルでのcurl実行結果]
-$ curl -I http://127.0.0.1/
-HTTP/1.1 200 OK
-Server: nginx/1.20.1
-Date: Mon, 02 Nov 2026 06:08:48 GMT
-Content-Type: text/html
-Content-Length: 5760
-Last-Modified: Mon, 24 Mar 2025 16:15:24 GMT
-Connection: keep-alive
-ETag: "67e1851c-1680"
-Accept-Ranges: bytes
-
-[firewalldの設定確認]
-$ sudo firewall-cmd --list-all
-public (active)
-  target: default
-  icmp-block-inversion: no
-  interfaces: ens160
-  sources:
-  services: cockpit dhcpv6-client
-  ports:
-  protocols:
-  forward: yes
-  masquerade: no
-  forward-ports:
-  source-ports:
-  icmp-blocks:
-  rich rules:
-    rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
-
-=> rich rulesから80番ポートの許可が消失している事実を確認。
-
-------------------------------------------------------------
-3. 復旧対応
-作業元IP（10.10.1.1/32）に限定したHTTP許可ルールを投入し反映。
-
-$ sudo firewall-cmd --permanent --zone=public --add-rich-rule='rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept'
+=== 1. 障害投入（80番許可ルールの削除） ===
+$ sudo firewall-cmd --permanent --zone=public --remove-rich-rule='rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept'
 success
+Exit Code: 0
+
 $ sudo firewall-cmd --reload
 success
+Exit Code: 0
 
-------------------------------------------------------------
-4. 復旧確認
-[firewalld設定確認]
+=== 2. 症状確認（作業PC） ===
+PS C:\> curl.exe -I --connect-timeout 3 --max-time 5 http://10.10.1.100/
+curl: (28) Connection timed out after 3012 milliseconds
+
+=== 3. 一次切り分け（サーバー内部） ===
+$ curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1/
+200
+Exit Code: 0
+
 $ sudo firewall-cmd --list-all
 public (active)
   target: default
   icmp-block-inversion: no
   interfaces: ens160
-  sources:
-  services: cockpit dhcpv6-client
-  ports:
-  protocols:
+  sources: 
+  services: 
+  ports: 
+  protocols: 
   forward: yes
   masquerade: no
-  forward-ports:
-  source-ports:
-  icmp-blocks:
-  rich rules:
-        rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept
-        rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
+  forward-ports: 
+  source-ports: 
+  icmp-blocks: 
+  rich rules: 
+	rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
+Exit Code: 0
 
-[作業PCからの疎通確認]
+=== 4. 復旧 ===
+$ sudo firewall-cmd --permanent --zone=public --add-rich-rule='rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept'
+success
+Exit Code: 0
+
+$ sudo firewall-cmd --reload
+success
+Exit Code: 0
+
+$ sudo firewall-cmd --list-all
+public (active)
+  target: default
+  icmp-block-inversion: no
+  interfaces: ens160
+  sources: 
+  services: 
+  ports: 
+  protocols: 
+  forward: yes
+  masquerade: no
+  forward-ports: 
+  source-ports: 
+  icmp-blocks: 
+  rich rules: 
+	rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept
+	rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
+Exit Code: 0
+
+=== 5. 復旧確認（作業PC） ===
 PS C:\> curl.exe -I --connect-timeout 3 --max-time 5 http://10.10.1.100/
 HTTP/1.1 200 OK
 Server: nginx/1.20.1
-Date: Mon, 02 Nov 2026 06:21:08 GMT
+Date: Thu, 05 Nov 2026 08:48:15 GMT
 Content-Type: text/html
 Content-Length: 5760
 Last-Modified: Mon, 24 Mar 2025 16:15:24 GMT
 Connection: keep-alive
 ETag: "67e1851c-1680"
 Accept-Ranges: bytes
-=> 正常に疎通が回復したことを確認。

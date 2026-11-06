@@ -1,0 +1,73 @@
+=== firewalld 不要サービス削除（22/80 を 10.10.1.1 のみに限定） ===
+実行日時: 2026-11-05T17:34:27+09:00 / ホスト: portfolio-web / 実行ユーザー: user
+
+$ sudo firewall-cmd --list-all
+public (active)
+  target: default
+  icmp-block-inversion: no
+  interfaces: ens160
+  sources: 
+  services: 
+  ports: 
+  protocols: 
+  forward: yes
+  masquerade: no
+  forward-ports: 
+  source-ports: 
+  icmp-blocks: 
+  rich rules: 
+	rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept
+	rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
+Exit Code: 0
+
+$ systemctl is-active cockpit.socket
+inactive
+Exit Code: 3
+
+$ ss -tlnp | grep 9090
+Exit Code: 1
+
+$ sudo firewall-cmd --permanent --zone=public --remove-service=cockpit
+Warning: NOT_ENABLED: cockpit
+success
+Exit Code: 0
+
+$ sudo firewall-cmd --permanent --zone=public --remove-service=dhcpv6-client
+Warning: NOT_ENABLED: dhcpv6-client
+success
+Exit Code: 0
+
+$ sudo firewall-cmd --reload
+success
+Exit Code: 0
+
+$ sudo firewall-cmd --list-all
+public (active)
+  target: default
+  icmp-block-inversion: no
+  interfaces: ens160
+  sources: 
+  services: 
+  ports: 
+  protocols: 
+  forward: yes
+  masquerade: no
+  forward-ports: 
+  source-ports: 
+  icmp-blocks: 
+  rich rules: 
+	rule family="ipv4" source address="10.10.1.1/32" port port="80" protocol="tcp" accept
+	rule family="ipv4" source address="10.10.1.1/32" port port="22" protocol="tcp" accept
+Exit Code: 0
+
+=== 作業PCからのHTTP疎通確認 ===
+PS C:\> curl.exe -I --connect-timeout 3 --max-time 5 http://10.10.1.100/
+HTTP/1.1 200 OK
+Server: nginx/1.20.1
+Date: Thu, 05 Nov 2026 08:35:43 GMT
+Content-Type: text/html
+Content-Length: 5760
+Last-Modified: Mon, 24 Mar 2025 16:15:24 GMT
+Connection: keep-alive
+ETag: "67e1851c-1680"
+Accept-Ranges: bytes

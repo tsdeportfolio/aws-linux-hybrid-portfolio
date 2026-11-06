@@ -9,6 +9,12 @@ if [ ! -f "$CONF_FILE" ]; then
     exit 2 # 判定不能
 fi
 
+# 【バリデーション1-2】設定ファイルを読めるか（600 root のため sudo 実行が前提）
+if [ ! -r "$CONF_FILE" ]; then
+    echo "[UNKNOWN] Config file not readable: $CONF_FILE (run with sudo)" >&2
+    exit 2
+fi
+
 # 【安全な読み込み】余計なコマンド実行を許さず、KEY=VALUE形式のみ取り込む
 while IFS='=' read -r key value; do
     # コメント行や空行をスキップ
@@ -47,6 +53,11 @@ threshold=$((10#$threshold))
 crit_threshold=$((10#$crit_threshold))
 if (( threshold < 1 || threshold > 100 || crit_threshold < 1 || crit_threshold > 100 )); then
     echo 'UNKNOWN reason=threshold_out_of_range' >&2
+    exit 2
+fi
+# 警告閾値は重大閾値より小さくなければならない（設定ファイル・引数どちらの指定でも検査）
+if (( threshold >= crit_threshold )); then
+    echo 'UNKNOWN reason=warn_not_less_than_crit' >&2
     exit 2
 fi
 result=$(LC_ALL=C df -P -- "$target")
