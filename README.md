@@ -266,8 +266,8 @@ sudo systemctl status nginx
 ## 2.4 ネットワーク疎通・システムリソースの稼働状態確認
 初期構築完了後の安定運用フェーズ移行にあたり、ネットワークとハードウェアリソース（ストレージ・メモリ）の健全性チェックを行いました。
 
-#### ① 外部ネットワークへの双方向疎通確認
-サーバー内部から外部DNSサーバー（Google Public DNS）に対して `ping` を実行し、双方向の接続が正常に維持されていることを確認（パケット損失 0%）。
+#### ① 外部ネットワークへのICMP疎通確認
+サーバー内部から外部DNSサーバー（`8.8.8.8`）へのICMP疎通確認を実施し、パケット損失0%で応答が返ることを確認。
 ```bash
 ping -c 4 8.8.8.8
 ```
@@ -341,7 +341,7 @@ EC2インスタンスのCPU使用率（`CPUUtilization`）を監視対象とし�
 ![アラーム閾値の設定](img/cloudwatch_alerm.png)
 
 #### ② Amazon SNSと連携した管理者通知アクションの設定
-アラーム通知用のSNSトピック（`EC2-CPU-Alert-Topic01`）を作成し、アラーム遷移時に指定の管理者宛てに即座に通知メールを配信するアクションを定義。
+アラーム通知用のSNSトピック（`EC2-CPU-Alert-Topic01`）を作成し、CloudWatch AlarmがALARM状態へ遷移した際に、指定のSNSトピックへ通知を発行するアクションを設定。
 ![SNS通知アクションの設定](img/cloudWatch-action.png)
 
 #### ③ 通知サブスクリプションの購読アクティベート
@@ -378,7 +378,7 @@ EC2インスタンスのCPU使用率（`CPUUtilization`）を監視対象とし�
 | backup_dir.sh (CR-2) | `引数指定（$1:対象 $2:保存先）` | 保存先を実行時に指定可能にし、実行ユーザーの権限に基づく事前検証で対象不在や書込不可時の異常終了（コード2）を担保するため（特権対象はsudo実行、権限不足試験は一般ユーザー実行で確認） | `sudo ./scripts/backup_dir.sh /etc/nginx /home/user/portfolio-lab/backups/nginx` | 正常終了（コード0）および一般ユーザー実行での書込権限不足・対象不在時の異常検知（コード2）を確認 |
 | disk_check設定ファイル | `/etc/ops/disk_check.conf` | スクリプト本体のハードコードを排除し環境差分を吸収するため | `sudo ls -l /etc/ops/disk_check.conf` | `-rw-------. 1 root root 86 10月 27 15:40 /etc/ops/disk_check.conf` |
 | disk_check.conf権限 | `600 (root:root / sudo実行前提)` | 設定値改ざんや一般ユーザーによる不正閲覧を防止するため（`disk_check.sh` は `sudo` で実行） | `sudo stat -c "%a" /etc/ops/disk_check.conf` | `600` |
-| Zabbixエージェントポート | `10050/TCP` | Zabbix Server未構築のため、現段階では対象ホスト上でのAgent起動・ローカルメトリクス取得を検証対象とする（外部Serverからのポーリングおよびアクティブチェックは未検証） | `ss -tlpn \| grep 10050` | `LISTEN 0 4096 0.0.0.0:10050 0.0.0.0:*` |
+| Zabbixエージェントポート | `10050/TCP（0.0.0.0待受・firewalld非開放）` | Zabbix Server未構築のため対象ホスト上でのAgent起動・ローカルメトリクス取得を検証対象とする（ListenIP未指定のため0.0.0.0でLISTENするが、firewalldでの10050番非開放とServer=127.0.0.1により外部接続を遮断。待受自体を絞る場合はListenIP=127.0.0.1を指定） | `ss -tlpn \| grep 10050` | `LISTEN 0 4096 0.0.0.0:10050 0.0.0.0:*` |
 | Zabbixエージェント設定 | `Server=127.0.0.1 / ServerActive=127.0.0.1 / Hostname=portfolio-web` | 設定ファイルにServer=127.0.0.1およびServerActive=127.0.0.1を明示してローカル検証に限定しHostname=portfolio-webを指定するため | `grep -E "^(Server\|ServerActive\|Hostname)=" /etc/zabbix/zabbix_agentd.conf` | `Server=127.0.0.1, ServerActive=127.0.0.1, Hostname=portfolio-web` |
 | rsyslog転送設定 | `/etc/rsyslog.d/50-nginx-forward.conf` | Webアクセスログを同一サーバー内のsyslog基盤（`/var/log/nginx_syslog.log`）へローカル集約・分離記録するため | `sudo ls -l /etc/rsyslog.d/50-nginx-forward.conf` | `-rw-r--r--. 1 root root 345 10月 26 16:37 /etc/rsyslog.d/50-nginx-forward.conf` |
 | nginx syslog出力 | `facility=local6,tag=nginx,severity=info` | アクセスログを通常のファイル保存と並行してローカルsyslog（local6）へ連携するため | `sudo nginx -T \| grep syslog` | `access_log syslog:server=127.0.0.1...` |
@@ -463,7 +463,9 @@ WantedBy=timers.target
 エンタープライズ環境で標準的に採用される統合監視ソフトウェア「Zabbix」の監視エージェント（Zabbix Agent）を導入しました。
 ※Zabbix Server未構築のため、現段階では対象ホスト上でのAgent起動・ローカルメトリクス取得を検証対象とし、外部Serverからのポーリングおよびアクティブチェック（ならびに `firewalld` での 10050/TCP 外部開放）は未検証としています。
 - 設定ファイル（抜粋）: [config/zabbix_agentd.conf](config/zabbix_agentd.conf)（`/etc/zabbix/zabbix_agentd.conf` にて `Server=127.0.0.1`、`ServerActive=127.0.0.1`、`Hostname=portfolio-web` を明示的に設定）
-- 待受ポート: 対象ホスト上で Agent の `10050/TCP` が LISTEN していることを確認。
+- 待受ポートと待受アドレス（`0.0.0.0:10050`）の設計補足:
+  - `Server=127.0.0.1` はパッシブチェックを許可する接続元IPの制限、`ServerActive=127.0.0.1` はアクティブチェックの接続先指定であり、Agent自身のソケット待受アドレスを絞る設定（`ListenIP`）ではないため、`ss` 上では既定の全インターフェース（`0.0.0.0:10050` および `[::]:10050`）で LISTEN している。
+  - 本構成では ① `firewalld` で 10050/TCP を外部開放していないこと、および ② `Server=127.0.0.1` により Agent 側でも localhost 以外からの接続を拒否する設定としていることで外部からの着信を遮断している（なお、ソケット待受自体をループバックインターフェースに限定する場合は `ListenIP=127.0.0.1` を追加する設計となる）。
 - 動作検証: 対象ホスト上で `zabbix_agentd -t system.cpu.load[all,avg1]` および `vfs.fs.size[/,free]` を実行し、CPU負荷（ロードアベレージ）やディスク空き容量のローカルメトリクス取得が正常に動作することを実証（[evidence/T14_zabbix_agent.txt](evidence/T14_zabbix_agent.txt)）。
 
 ### ② Nginx アクセスログの同一サーバー内 rsyslog 振り分け（ローカルsyslog集約）
